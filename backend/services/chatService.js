@@ -1,15 +1,27 @@
 const ChatRoom = require('../models/ChatRoom');
+const User = require('../models/User');
 const crypto = require('crypto');
+
+// Mirror the user → room link onto the User document so the Community page
+// can show "joined" without an extra round-trip and so leaving works.
+const ensureUserJoined = async (userId, roomId) => {
+  if (!userId) return;
+  try {
+    await User.findByIdAndUpdate(userId, { $addToSet: { joinedHubs: roomId } });
+  } catch (err) {
+    console.error('ensureUserJoined error:', err.message);
+  }
+};
 
 const findOrCreateRoom = async (destination, startDate, endDate, userId) => {
   try {
     // 1. Look for an existing room for this destination with "close" dates (within 3 days)
     const margin = 3 * 24 * 60 * 60 * 1000; // 3 days in ms
     const startObj = new Date(startDate);
-    
+
     const existingRoom = await ChatRoom.findOne({
       destination: destination,
-      startDate: { 
+      startDate: {
         $gte: new Date(startObj.getTime() - margin),
         $lte: new Date(startObj.getTime() + margin)
       }
@@ -20,6 +32,7 @@ const findOrCreateRoom = async (destination, startDate, endDate, userId) => {
         existingRoom.participants.push(userId);
         await existingRoom.save();
       }
+      await ensureUserJoined(userId, existingRoom._id);
       return existingRoom;
     }
 
@@ -35,6 +48,7 @@ const findOrCreateRoom = async (destination, startDate, endDate, userId) => {
     });
 
     await newRoom.save();
+    await ensureUserJoined(userId, newRoom._id);
     return newRoom;
   } catch (error) {
     console.error('Chat Room Error:', error.message);

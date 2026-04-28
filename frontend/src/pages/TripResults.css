@@ -156,6 +156,11 @@
   line-height: 1.5;
   border-left: 4px solid var(--accent);
   background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+}
+
+.trip-description-card p {
+  color: var(--text);
 }
 
 .trip-description-card .info-icon {
@@ -312,9 +317,15 @@
   border-radius: 14px;
   text-align: left;
   font-family: inherit;
+  /* Buttons don't inherit color by default — force theme text colour so the
+     activity title/description render correctly in both light and dark mode. */
+  color: var(--text);
   margin-bottom: 12px;
   width: 100%;
 }
+
+.activity-card h4 { color: var(--text); }
+.activity-card p { color: var(--text-muted); }
 
 .activity-card:hover {
   background: var(--glass-hover);
@@ -816,13 +827,18 @@ body.light-mode .ai-chat-overlay {
 body.light-mode .chat-sidebar-header {
   background: rgba(15, 23, 42, 0.04);
 }
+body.light-mode .chat-sidebar-header h3 { color: var(--text); }
 body.light-mode .chat-messages {
   background: #f8fafc;
 }
 body.light-mode .msg.bot {
   background: #ffffff;
   border-color: var(--border);
+  color: var(--text);
 }
+body.light-mode .chat-footer input { color: var(--text); }
+body.light-mode .room-name { color: var(--text); }
+body.light-mode .summary-details .detail-item { color: var(--text); }
 
 /* Community / right sidebar pieces */
 body.light-mode .community-card {

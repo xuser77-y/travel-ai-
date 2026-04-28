@@ -1,46 +1,172 @@
 .community-page {
-  padding-top: calc(var(--nav-height) + 24px);
-  height: 100vh;
-  padding-bottom: 20px;
+  /* The whole page should fit in the viewport — no outer scroll. */
+  min-height: 100vh;
+  padding: calc(var(--nav-height) + 20px) 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .community-container {
-  max-width: 1400px;
+  width: 100%;
+  max-width: 1180px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 280px 1fr;
   gap: 20px;
-  height: calc(100vh - var(--nav-height) - 48px);
-  padding: 0 20px;
+  /* Cap so on tall screens we don't get a giant chat box. The internal
+     message list scrolls; the page itself does not. */
+  height: min(720px, calc(100vh - var(--nav-height) - 60px));
+  min-height: 0;
 }
 
 .community-sidebar {
-  padding: 25px;
+  padding: 22px 20px;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 18px;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar-header h3 {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.sidebar-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.sidebar-empty {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 18px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  line-height: 1.5;
+}
+
+/* Invite code form */
+.join-by-code {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.join-by-code-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: var(--transition);
+}
+
+.join-by-code-input:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.join-by-code-input svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.join-by-code-input input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 8px 4px;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+.join-by-code-input input:focus { outline: none; }
+.join-by-code-input input::placeholder {
+  color: var(--text-muted);
+  letter-spacing: 0;
+  font-family: inherit;
+  text-transform: none;
+}
+
+.btn-code-go {
+  background: var(--primary);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-code-go:hover:not(:disabled) {
+  background: var(--primary-light, var(--primary));
+  filter: brightness(1.1);
+}
+
+.btn-code-go:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.code-error {
+  font-size: 0.72rem;
+  color: #ef4444;
+  padding-left: 4px;
 }
 
 .room-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .room-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 15px;
-  border-radius: 12px;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
   cursor: pointer;
   transition: var(--transition);
+  /* The sidebar room entries are now real <button> elements; force theme
+     colour so the title / destination read correctly in both modes. */
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+}
+
+.room-item.fan-locked {
+  background: rgba(234, 179, 8, 0.05);
+  border-color: rgba(234, 179, 8, 0.18);
+}
+
+.room-item.fan-locked:hover {
+  background: rgba(234, 179, 8, 0.1);
 }
 
 .room-item.active {
@@ -48,29 +174,102 @@
   color: var(--text-on-primary);
 }
 
+.room-item.active .room-info p {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .room-item:not(.active):hover {
   background: var(--glass-hover);
 }
 
+.room-item.locked {
+  cursor: default;
+  opacity: 0.85;
+  background: rgba(234, 179, 8, 0.05);
+  border-color: rgba(234, 179, 8, 0.18);
+}
+
 .room-icon {
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+
+.room-icon.fan {
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--accent);
+}
+
+.room-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .room-info h4 {
   font-size: 0.95rem;
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: inherit;
 }
 
 .room-info p {
   font-size: 0.75rem;
   opacity: 0.8;
+  color: var(--text-muted);
 }
+
+.room-item.active .room-info h4,
+.room-item.active .room-info p { color: var(--text-on-primary); }
+
+.room-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.3;
+}
+
+.room-tag.default {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+}
+
+.room-tag.joined {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+}
+
+.room-tag.locked {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde68a;
+}
+
+.room-item.active .room-tag { background: rgba(255, 255, 255, 0.25); color: #fff; }
+
+.room-group-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 8px 4px 2px;
+  margin-top: 6px;
+}
+
+.room-group-label.fan { color: var(--accent); }
 
 .people-list label {
   font-size: 0.75rem;
@@ -110,23 +309,115 @@
   margin-left: auto;
 }
 
-/* Chat Area */
+/* Chat Area
+ * The chat-area is a 3-row grid: header (auto) | messages (1fr) | input (auto).
+ * This guarantees the input is ALWAYS visible without scrolling the page,
+ * and the message list scrolls inside its own row. */
 .chat-area {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-header {
-  padding: 20px 30px;
+  padding: 14px 22px;
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
-.chat-info h4 { font-size: 1.1rem; }
+.chat-info h4 { font-size: 1.1rem; color: var(--text); }
 .chat-info p { font-size: 0.85rem; color: var(--text-muted); }
+
+.chat-info-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.chat-info-meta .meta-dot { opacity: 0.5; }
+
+.member-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.14);
+  color: #6ee7b7;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.member-count svg { flex-shrink: 0; }
+
+.member-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.room-item.active .member-mini { color: rgba(255, 255, 255, 0.85); }
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.room-invite-pill {
+  background: rgba(var(--accent-rgb), 0.14);
+  border: 1px dashed rgba(var(--accent-rgb), 0.5);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.btn-leave-hub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.btn-leave-hub:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #ef4444;
+}
+
+.btn-leave-hub:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .chat-actions {
   display: flex;
@@ -142,6 +433,35 @@
   color: var(--text-muted);
   text-align: center;
   margin-top: 10px;
+}
+
+.empty-chat-hint {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.btn-link-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-link-login:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .invite-info-pill strong {
@@ -163,7 +483,7 @@
 }
 
 .message-list-wrapper {
-  flex: 1;
+  min-height: 0;
   overflow: hidden;
   position: relative;
   display: flex;
@@ -177,7 +497,7 @@
   justify-content: center;
   height: 100%;
   text-align: center;
-  padding: 40px;
+  padding: 28px 32px;
   background: var(--glass-bg);
   backdrop-filter: blur(15px);
   z-index: 10;
@@ -186,23 +506,25 @@
 
 .join-icon {
   color: var(--primary);
-  margin-bottom: 25px;
+  margin-bottom: 16px;
   animation: bounce 2s infinite;
 }
 
+.join-icon.fan { color: var(--accent); }
+
 .join-overlay h3 {
-  font-size: 2rem;
-  margin-bottom: 12px;
+  font-size: 1.4rem;
+  margin-bottom: 8px;
   font-weight: 800;
   color: var(--text);
 }
 
 .join-overlay p {
   color: var(--text-muted);
-  max-width: 450px;
-  margin-bottom: 35px;
-  line-height: 1.6;
-  font-size: 1.05rem;
+  max-width: 420px;
+  margin-bottom: 22px;
+  line-height: 1.55;
+  font-size: 0.95rem;
 }
 
 @keyframes bounce {
@@ -225,16 +547,18 @@
 
 .message-list {
   flex: 1;
-  padding: 30px;
+  padding: 18px 22px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
+  scroll-behavior: smooth;
 }
 .people-list-section {
   margin-top: auto;
-  padding-top: 25px;
+  padding-top: 16px;
   border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .people-list-section label {
@@ -301,9 +625,9 @@
 }
 
 .message-bubble {
-  padding: 12px 18px;
+  padding: 9px 14px;
   background: var(--glass-bg);
-  border-radius: 18px;
+  border-radius: 14px;
   position: relative;
 }
 
@@ -312,7 +636,7 @@
   border-bottom-right-radius: 4px;
 }
 
-.message-bubble p { font-size: 0.95rem; }
+.message-bubble p { font-size: 0.92rem; line-height: 1.45; word-break: break-word; }
 
 .time {
   font-size: 0.7rem;
@@ -335,19 +659,22 @@
 }
 
 .chat-input-container {
-  padding: 20px 30px;
+  padding: 12px 20px;
   display: flex;
-  gap: 15px;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  align-items: center;
 }
 
 .chat-input-container input {
   flex: 1;
   background: var(--glass-bg);
   border: 1px solid var(--border);
-  padding: 15px 25px;
-  border-radius: 12px;
+  padding: 11px 18px;
+  border-radius: 10px;
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .chat-input-container input::placeholder { color: var(--text-muted); }
@@ -355,18 +682,23 @@
 .chat-input-container input:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
 .btn-send {
-  width: 50px;
-  height: 50px;
+  width: 42px;
+  height: 42px;
   background: var(--primary);
   color: white;
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  transition: var(--transition);
 }
+
+.btn-send:hover { filter: brightness(1.08); }
 
 /* Right Sidebar Itinerary */
 .itinerary-preview {
@@ -410,9 +742,17 @@
   font-weight: 700;
 }
 
-@media (max-width: 1100px) {
-  .community-container { grid-template-columns: 1fr; height: auto; }
+@media (max-width: 900px) {
+  .community-page { align-items: stretch; padding: calc(var(--nav-height) + 12px) 12px 16px; }
+  .community-container {
+    grid-template-columns: 1fr;
+    height: calc(100vh - var(--nav-height) - 28px);
+    max-width: 100%;
+  }
   .community-sidebar { display: none; }
+  .chat-header { padding: 12px 16px; }
+  .message-list { padding: 14px 16px; }
+  .chat-input-container { padding: 10px 14px; }
 }
 
 /* ========================================================================
@@ -494,3 +834,80 @@ body.light-mode .btn-view-full {
 
 body.light-mode .avatar-circle-small + * { color: var(--text); }
 
+/* Sidebar room buttons in light mode */
+body.light-mode .room-item { color: var(--text); }
+body.light-mode .room-item:not(.active):hover { background: rgba(15, 23, 42, 0.05); }
+body.light-mode .room-item.locked {
+  background: rgba(202, 138, 4, 0.08);
+  border-color: rgba(202, 138, 4, 0.25);
+}
+body.light-mode .room-info p { color: var(--text-muted); }
+
+/* Tags need a darker palette on white */
+body.light-mode .room-tag.default {
+  background: rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+}
+body.light-mode .room-tag.joined {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+body.light-mode .room-tag.locked {
+  background: rgba(202, 138, 4, 0.18);
+  color: #92400e;
+}
+
+body.light-mode .room-group-label { color: var(--text-muted); }
+body.light-mode .room-group-label.fan { color: var(--accent); }
+
+/* Leave button + invite pill in light mode */
+body.light-mode .btn-leave-hub {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+body.light-mode .btn-leave-hub:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #b91c1c;
+}
+
+body.light-mode .room-invite-pill {
+  background: rgba(202, 138, 4, 0.12);
+  border-color: rgba(202, 138, 4, 0.45);
+  color: #92400e;
+}
+
+/* Chat info / messages */
+body.light-mode .chat-info h4 { color: var(--text); }
+body.light-mode .chat-input-container input { color: var(--text); }
+body.light-mode .message-bubble p { color: var(--text); }
+body.light-mode .own .message-bubble p { color: #fff; }
+body.light-mode .empty-chat-hint { color: var(--text-muted); }
+body.light-mode .person-name { color: var(--text); }
+body.light-mode .sidebar-header h3 { color: var(--text); }
+
+/* Invite-code form in light mode */
+body.light-mode .join-by-code-input {
+  background: #ffffff;
+  border-color: var(--border);
+}
+body.light-mode .join-by-code-input input { color: var(--text); }
+body.light-mode .sidebar-sub,
+body.light-mode .sidebar-empty { color: var(--text-muted); }
+
+/* Fan-locked card in light mode */
+body.light-mode .room-item.fan-locked {
+  background: rgba(202, 138, 4, 0.08);
+  border-color: rgba(202, 138, 4, 0.3);
+}
+body.light-mode .room-item.fan-locked:hover {
+  background: rgba(202, 138, 4, 0.14);
+}
+
+/* Member-count pill: needs darker text on white for proper contrast */
+body.light-mode .member-count {
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+body.light-mode .member-mini { color: var(--text-muted); }

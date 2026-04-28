@@ -1,0 +1,105 @@
+.toast-stack {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 2000;
+  pointer-events: none;
+  max-width: min(380px, calc(100vw - 40px));
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #1f2937;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  animation: toastIn 0.22s ease-out;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+@keyframes toastIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.toast-icon { flex-shrink: 0; margin-top: 1px; }
+
+.toast-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.toast-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.toast-message { color: inherit; }
+
+.toast-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.toast-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Variants -------------------------------------------------------- */
+.toast-success { border-left: 3px solid #10b981; }
+.toast-success .toast-icon { color: #34d399; }
+
+.toast-error { border-left: 3px solid #ef4444; }
+.toast-error .toast-icon { color: #f87171; }
+
+.toast-warning { border-left: 3px solid #f59e0b; }
+.toast-warning .toast-icon { color: #fbbf24; }
+
+.toast-info { border-left: 3px solid #3b82f6; }
+.toast-info .toast-icon { color: #60a5fa; }
+
+/* Light mode ------------------------------------------------------ */
+body.light-mode .toast {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+}
+
+body.light-mode .toast-close:hover {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+/* Mobile ---------------------------------------------------------- */
+@media (max-width: 600px) {
+  .toast-stack {
+    right: 12px;
+    left: 12px;
+    top: 72px;
+    max-width: none;
+  }
+}

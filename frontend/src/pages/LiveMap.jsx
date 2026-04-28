@@ -9,6 +9,8 @@ import {
   Bus, CloudSun, Shield, ThumbsUp, Filter, Crosshair, RefreshCw, X, Navigation, Trash2, Clock
 } from 'lucide-react';
 import useTripStore from '../stores/tripStore';
+import { useToast } from '../components/UI/Toast';
+import { useConfirm } from '../components/UI/ConfirmDialog';
 import './LiveMap.css';
 
 const API = 'http://localhost:5000/api/livemap';
@@ -103,6 +105,8 @@ const guestAuthorId = (() => {
 
 const LiveMap = () => {
   const { user, language } = useTripStore();
+  const toast = useToast();
+  const confirm = useConfirm();
   const myAuthorId = user?._id || user?.id || guestAuthorId;
   const [posts, setPosts] = useState([]);
   const [clusters, setClusters] = useState([]);
@@ -253,7 +257,14 @@ const LiveMap = () => {
 
   const deletePost = async (id) => {
     if (!id || deletingId) return;
-    if (!window.confirm(t.confirmDelete)) return;
+    const ok = await confirm({
+      title: t.confirmDelete || 'Delete this post?',
+      message: 'It will disappear from the live feed for everyone.',
+      confirmLabel: t.remove || 'Delete',
+      cancelLabel: 'Cancel',
+      variant: 'danger'
+    });
+    if (!ok) return;
     setDeletingId(id);
     // Optimistic remove
     const snapshot = posts;
@@ -264,8 +275,8 @@ const LiveMap = () => {
       });
     } catch (err) {
       console.error('Delete failed:', err);
-      // Revert on failure
-      setPosts(snapshot);
+      toast.error(err.response?.data?.error || 'Could not delete post.');
+      setPosts(snapshot); // Revert on failure
     } finally {
       setDeletingId(null);
     }

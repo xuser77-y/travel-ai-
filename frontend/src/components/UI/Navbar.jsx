@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Globe, Moon, Sun, User, LogOut, Menu, X, Trophy,
-  LayoutDashboard, Settings as SettingsIcon
+  LayoutDashboard, Settings as SettingsIcon, Shield
 } from 'lucide-react';
 import useTripStore from '../../stores/tripStore';
 import './Navbar.css';
@@ -134,6 +134,11 @@ const Navbar = () => {
                   <div className="dropdown-links">
                     <Link to="/dashboard"><LayoutDashboard size={16} /> {t.dashboard}</Link>
                     <Link to="/settings"><SettingsIcon size={16} /> {t.settings}</Link>
+                    {user.isAdmin && (
+                      <Link to="/admin" className="admin-link">
+                        <Shield size={16} /> Admin
+                      </Link>
+                    )}
                     <hr />
                     <button className="logout-link" onClick={handleLogout}>
                       <LogOut size={16} /> {t.logout}

@@ -1,0 +1,40 @@
+import { io } from 'socket.io-client';
+
+/**
+ * Singleton Socket.IO client — one connection per browser tab.
+ *
+ * Pages that want realtime updates import `socket` from here instead of
+ * calling `io()` themselves; this keeps the admin's "online users" count
+ * accurate (1 connection per tab, not per page-mount).
+ *
+ * `identifySocket(user)` should be called whenever the auth state changes
+ * so the backend can associate the socket with a real user account.
+ */
+
+const API = 'http://localhost:5000';
+
+export const socket = io(API, {
+  autoConnect: true,
+  transports: ['websocket', 'polling']
+});
+
+export const identifySocket = (user) => {
+  socket.emit('identify', {
+    userId: user?.id || user?._id || null,
+    name: user?.name || 'Guest'
+  });
+};
+
+// Re-emit identify after every (re)connect so transient drops don't lose
+// the userId association on the server side.
+let lastIdentity = null;
+socket.on('connect', () => {
+  if (lastIdentity) socket.emit('identify', lastIdentity);
+});
+
+export const setIdentity = (identity) => {
+  lastIdentity = identity;
+  socket.emit('identify', identity);
+};
+
+export default socket;

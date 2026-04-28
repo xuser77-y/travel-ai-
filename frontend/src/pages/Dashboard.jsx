@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import useTripStore from '../stores/tripStore';
+import { useToast } from '../components/UI/Toast';
+import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Dashboard.css';
 
 const formatDateRange = (start, end) => {
@@ -30,6 +32,8 @@ const daysBetween = (start, end) => {
 const Dashboard = () => {
   const { user, token, setTrip } = useTripStore();
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -66,15 +70,24 @@ const Dashboard = () => {
 
   const handleDeleteTrip = async (e, trip) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete your trip to ${trip.destination?.name?.split(',')[0]}?`)) return;
+    const place = trip.destination?.name?.split(',')[0] || 'this trip';
+    const ok = await confirm({
+      title: 'Delete trip?',
+      message: `Your trip to ${place} will be permanently removed. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Keep',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await axios.delete(`http://localhost:5000/api/trips/${trip._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTrips((prev) => prev.filter((t) => t._id !== trip._id));
+      toast.success(`Deleted your trip to ${place}.`);
     } catch (err) {
       console.error('Delete failed:', err);
-      alert('Could not delete trip. Try again.');
+      toast.error(err.response?.data?.error || 'Could not delete trip. Try again.');
     }
   };
 
