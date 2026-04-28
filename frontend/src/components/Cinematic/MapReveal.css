@@ -1,0 +1,306 @@
+.map-reveal {
+  position: relative;
+  background: linear-gradient(180deg, #04050d 0%, #0a0e1f 100%);
+  padding: 100px 24px 120px;
+  color: #fff;
+  overflow: hidden;
+}
+
+.mr-title-wrap {
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto 60px;
+}
+
+.mr-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 30px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  color: #eab308;
+  margin-bottom: 20px;
+}
+
+.mr-title {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin-bottom: 18px;
+  color: #fff;
+}
+
+.mr-title .grad {
+  background: linear-gradient(135deg, #3b82f6, #a855f7, #eab308);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-style: italic;
+}
+
+.mr-sub {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.65);
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.mr-frame {
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  aspect-ratio: 16 / 9;
+  transform-origin: center;
+}
+
+.mr-glow {
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.25), rgba(59, 130, 246, 0.15) 40%, transparent 70%);
+  filter: blur(40px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.mr-map-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 40px 80px -20px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 0 60px rgba(0, 0, 0, 0.5);
+}
+
+.mr-map-shell .leaflet-container {
+  background: #0a0e1f;
+}
+
+/* Cover overlay (cinematic intro) */
+.mr-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 800;
+  background: linear-gradient(135deg, rgba(4, 5, 13, 0.95), rgba(10, 14, 31, 0.85));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+}
+
+.mr-cover-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.mr-cover-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 1;
+}
+
+.mr-cover-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.4em;
+  color: #eab308;
+}
+
+.mr-cover-coords {
+  font-family: 'Courier New', monospace;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.1em;
+}
+
+/* Active destination badge */
+.mr-active-card {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 850;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px 14px 16px;
+  border-radius: 14px;
+  background: rgba(10, 14, 31, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  min-width: 220px;
+}
+
+.mr-active-pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+  animation: mrPulse 1.6s ease-out infinite;
+}
+
+@keyframes mrPulse {
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  100% { box-shadow: 0 0 0 14px transparent; opacity: 0.6; }
+}
+
+.mr-active-card span.mr-active-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 2px;
+}
+
+.mr-active-card strong {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.mr-active-card small {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Dots */
+.mr-dots {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 850;
+  display: flex;
+  gap: 8px;
+}
+
+.mr-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  cursor: pointer;
+  transition: width 0.4s ease, background 0.4s ease;
+  padding: 0;
+}
+
+.mr-dot.on {
+  width: 28px;
+  border-radius: 6px;
+}
+
+/* Custom Pin */
+.mr-pin .mr-pin-core {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c);
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+  transform: translate(3px, 3px);
+}
+
+.mr-popup strong {
+  display: block;
+  font-size: 1rem;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.mr-popup span {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .map-reveal { padding: 60px 16px 80px; }
+  .mr-frame { aspect-ratio: 4 / 5; }
+  .mr-active-card {
+    top: 12px;
+    left: 12px;
+    padding: 10px 14px 10px 12px;
+    min-width: 0;
+  }
+  .mr-active-card strong { font-size: 0.95rem; }
+  .mr-active-card small { display: none; }
+}
+
+/* ========================================================================
+   LIGHT MODE OVERRIDES
+   ======================================================================== */
+body.light-mode .map-reveal {
+  background: linear-gradient(180deg, var(--bg) 0%, #eef2f7 100%);
+  color: var(--text);
+}
+body.light-mode .mr-title { color: var(--text); }
+body.light-mode .mr-sub { color: var(--text-muted); }
+
+body.light-mode .mr-map-shell {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 40px 80px -20px rgba(15, 23, 42, 0.20),
+    0 0 0 1px rgba(15, 23, 42, 0.05),
+    inset 0 0 60px rgba(15, 23, 42, 0.10);
+}
+
+/* Cinematic cover overlay - keep dark for the "intro" feel but lighten */
+body.light-mode .mr-cover {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.75));
+}
+
+/* Active destination card - dark glass on light bg looks fine, but lighten */
+body.light-mode .mr-active-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.10);
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.18);
+}
+body.light-mode .mr-active-card span.mr-active-label {
+  color: var(--text-muted);
+}
+body.light-mode .mr-active-card strong { color: var(--text); }
+body.light-mode .mr-active-card small { color: var(--text-muted); }
+
+body.light-mode .mr-dot {
+  background: rgba(15, 23, 42, 0.20);
+}
+
+body.light-mode .mr-glow {
+  background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.18), rgba(59, 130, 246, 0.10) 40%, transparent 70%);
+}
+

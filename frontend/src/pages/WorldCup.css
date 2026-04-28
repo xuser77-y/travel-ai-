@@ -1,0 +1,1123 @@
+/* ==========================================================================
+   World Cup 2030 - Magical Morocco
+   Fully theme-aware (light + dark) page styles.
+   ========================================================================== */
+.world-cup-v2 {
+  --sunset-orange: #f97316;
+  --sunset-deep: #ea580c;
+  --morocco-blue: #1e3a8a;
+  --morocco-red: #be123c;
+  --gold-accent: #d4af37;
+  color: var(--text);
+  background: var(--bg);
+  overflow-x: hidden;
+}
+
+/* Hero Section */
+.wc-hero-v2 {
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-color: #0f172a;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.wc-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.55) 50%, rgba(15, 23, 42, 0.2));
+  padding: calc(var(--nav-height) + 40px) 8% 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 40px;
+}
+
+.wc-hero-content-v2 {
+  max-width: 600px;
+  z-index: 10;
+}
+
+.road-tag {
+  display: inline-block;
+  background: rgba(234, 88, 12, 0.2);
+  color: var(--sunset-orange);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  margin-bottom: 20px;
+  border-left: 3px solid var(--sunset-orange);
+}
+
+.magical-title {
+  font-size: clamp(2.5rem, 6vw, 6rem);
+  font-weight: 900;
+  line-height: 0.95;
+  margin-bottom: 30px;
+  letter-spacing: -0.03em;
+  background: linear-gradient(to bottom, #fff, #cbd5e1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.magical-desc {
+  font-size: 1.15rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+  margin-bottom: 40px;
+  max-width: 560px;
+}
+
+.countdown-group {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 50px;
+}
+
+.cd-item {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  padding: 18px 22px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  min-width: 90px;
+}
+
+.cd-item strong {
+  display: block;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.cd-item span {
+  font-size: 0.7rem;
+  color: #cbd5e1;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+.hero-v2-ctas {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Hero btn-glass sits on the dark hero overlay - keep glass white in both themes */
+.wc-hero-v2 .btn-glass,
+body.light-mode .wc-hero-v2 .btn-glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.wc-hero-v2 .btn-glass:hover,
+body.light-mode .wc-hero-v2 .btn-glass:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.30);
+}
+
+.hero-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  z-index: 10;
+}
+
+.hero-flags img {
+  width: 56px;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255,255,255,0.2);
+  transition: transform 0.3s ease;
+}
+
+.hero-flags img:hover { transform: scale(1.05); }
+
+/* Grand Arenas */
+.grand-arenas {
+  padding: 100px 10%;
+  background: var(--bg);
+}
+
+.section-header-v2 {
+  margin-bottom: 40px;
+}
+
+.section-header-v2.centered {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 50px;
+}
+
+.section-header-v2 p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  margin-top: 8px;
+  max-width: 620px;
+}
+
+.section-title-v2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 900;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+.st-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.30);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.arenas-container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 28px;
+  align-items: stretch;
+}
+
+.map-wrapper {
+  position: relative;
+  background: var(--bg-elev);
+  border-radius: 20px;
+  height: 540px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.map-skeleton {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+}
+
+.match-preview {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+}
+
+.match-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--primary);
+  font-weight: 800;
+  margin-bottom: 22px;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.match-item {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.match-item:last-child { border-bottom: none; margin-bottom: 0; }
+
+.m-date {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 800;
+  letter-spacing: 0.10em;
+}
+
+.m-teams {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.m-teams strong {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0 4px;
+}
+
+.m-teams img {
+  width: 26px;
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.m-venue {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Soul of Kingdom */
+.soul-kingdom {
+  padding: 100px 10%;
+  text-align: center;
+}
+
+.soul-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  text-align: left;
+}
+
+.soul-card {
+  border-radius: 20px;
+  background-size: cover;
+  background-position: center;
+  padding: 40px;
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+  overflow: hidden;
+  min-height: 300px;
+}
+
+.soul-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+}
+
+.soul-card-content {
+  position: relative;
+  z-index: 2;
+  color: white;
+}
+
+.main-card { height: 100%; }
+.soul-right-col { display: grid; grid-template-rows: 1fr 1fr; gap: 20px; }
+.soul-bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.mini-card.b-blue { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+
+/* ==========================================================================
+   Numbered map markers + popup
+   ========================================================================== */
+.wc-marker-wrap { background: transparent !important; border: none !important; }
+
+.wc-marker {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50% 50% 50% 0;
+  background: linear-gradient(135deg, var(--sunset-orange), var(--morocco-red));
+  transform: rotate(-45deg);
+  box-shadow:
+    0 4px 12px rgba(190, 18, 60, 0.4),
+    0 0 0 2px rgba(255, 255, 255, 0.95) inset,
+    0 0 0 4px var(--sunset-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.wc-marker:hover { transform: rotate(-45deg) scale(1.1); }
+
+.wc-marker span {
+  transform: rotate(45deg);
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.map-popup-content {
+  display: flex;
+  flex-direction: column;
+  margin: -1px;
+}
+
+.map-popup-content .mp-photo {
+  width: 100%;
+  height: 130px;
+  background-size: cover;
+  background-position: center;
+}
+
+.mp-body {
+  padding: 14px 16px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mp-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--sunset-orange);
+}
+
+.mp-body h4 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.mp-body p {
+  font-size: 0.82rem;
+  color: #475569;
+  margin: 0;
+}
+
+.mp-google-btn {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #4285F4, #1A73E8);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mp-google-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -4px rgba(66, 133, 244, 0.5);
+}
+
+/* ==========================================================================
+   Stadium Showcase Grid
+   ========================================================================== */
+.stadiums-section {
+  padding: 80px 10% 100px;
+  background: var(--bg);
+}
+
+.stadium-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.stadium-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+.stadium-card:hover,
+.stadium-card.is-active {
+  transform: translateY(-6px);
+  border-color: var(--sunset-orange);
+  box-shadow: 0 20px 40px -16px rgba(190, 18, 60, 0.30);
+}
+
+.stadium-card.stadium-skeleton {
+  height: 460px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.04) 25%,
+      rgba(0, 0, 0, 0.08) 50%,
+      rgba(0, 0, 0, 0.04) 75%
+    ) var(--bg-elev);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.sc-photo {
+  position: relative;
+  height: 200px;
+  background-color: var(--morocco-blue);
+  background-size: cover;
+  background-position: center;
+}
+
+.sc-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.55));
+}
+
+.sc-num {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 4px 10px;
+  border-radius: 8px;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.sc-status {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 2;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.92);
+  color: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.sc-body {
+  padding: 22px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sc-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sc-body h3 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.sc-stats {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.sc-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--accent);
+  flex: 1;
+  min-width: 100px;
+}
+
+.sc-stat strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.sc-stat small {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sc-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sc-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.83rem;
+  color: var(--text);
+}
+
+.sc-features li svg {
+  color: var(--sunset-orange);
+  flex-shrink: 0;
+}
+
+.sc-architect {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.sc-architect span {
+  color: var(--accent);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.65rem;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+/* Curated Itineraries - Reference Style */
+.curated-itineraries {
+  padding: 100px 10%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.itinerary-header { text-align: left; margin-bottom: 60px; }
+.it-tag { color: var(--sunset-orange); font-weight: 800; font-size: 0.8rem; letter-spacing: 0.1em; display: block; margin-bottom: 10px; }
+
+.itinerary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+}
+
+.itinerary-card-ref {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+}
+
+.light-mode .itinerary-card-ref {
+  background: white;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.itinerary-card-ref.popular {
+  border: 2px solid var(--sunset-orange);
+  transform: scale(1.05);
+  box-shadow: 0 20px 40px rgba(249, 115, 22, 0.1);
+}
+
+.local-badge {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #f59e0b;
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.it-card-top h3 { font-size: 1.8rem; font-weight: 800; margin-bottom: 15px; letter-spacing: -0.02em; }
+.it-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 18px; }
+
+.it-meta-row {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.it-meta-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(var(--accent-rgb), 0.10);
+  color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.20);
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.it-features { flex: 1; margin-bottom: 40px; }
+.it-feat-item { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; font-size: 0.9rem; color: var(--text); }
+.feat-icon { color: var(--sunset-orange); flex-shrink: 0; }
+
+.it-card-bottom { border-top: 1px solid var(--border); padding-top: 30px; }
+
+.it-price-row span { display: block; font-size: 0.8rem; color: #64748b; text-transform: uppercase; margin-bottom: 5px; }
+.it-price-row strong { font-size: 2.2rem; font-weight: 900; margin-bottom: 25px; display: block; }
+
+.btn-it-ref {
+  width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.18s ease, filter 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-it-ref:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 26px -10px currentColor;
+  filter: brightness(1.08);
+}
+
+.btn-it-ref:active {
+  transform: translateY(0);
+}
+
+.btn-it-ref svg {
+  transition: transform 0.18s ease;
+}
+
+.btn-it-ref:hover svg {
+  transform: translateX(3px);
+}
+
+/* ==========================================================================
+   Fan Rooms (V2)
+   ========================================================================== */
+.fan-rooms-v2 {
+  position: relative;
+  margin: 100px 10% 120px;
+  padding: 56px 60px;
+  border-radius: 28px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(190, 18, 60, 0.10), rgba(249, 115, 22, 0.08), rgba(59, 130, 246, 0.06));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.fr-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(800px 320px at 0% 0%, rgba(249, 115, 22, 0.18), transparent 60%),
+    radial-gradient(700px 280px at 100% 100%, rgba(190, 18, 60, 0.14), transparent 65%);
+  pointer-events: none;
+}
+
+.fr-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.fr-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fr-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(190, 18, 60, 0.12);
+  color: var(--morocco-red, #be123c);
+  border: 1px solid rgba(190, 18, 60, 0.30);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  width: fit-content;
+}
+
+.fr-content h2 {
+  font-size: clamp(1.8rem, 3.6vw, 2.6rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--text);
+}
+
+.fr-content p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 520px;
+  margin: 0;
+}
+
+.fr-stats {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.fr-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  flex: 1;
+  min-width: 130px;
+}
+
+.fr-stat svg { color: var(--sunset-orange); flex-shrink: 0; }
+.fr-stat strong {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.fr-stat small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fr-cta {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, var(--sunset-orange), var(--morocco-red, #be123c));
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  width: fit-content;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.15s ease;
+  box-shadow: 0 12px 24px -10px rgba(190, 18, 60, 0.45);
+}
+
+.fr-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 32px -10px rgba(190, 18, 60, 0.55);
+  filter: brightness(1.08);
+}
+
+.fr-cta svg { transition: transform 0.18s ease; }
+.fr-cta:hover svg { transform: translateX(3px); }
+
+.fr-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fr-room-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.fr-room-card:hover {
+  transform: translateX(-4px);
+  border-color: var(--sunset-orange);
+  box-shadow: 0 14px 24px -12px rgba(249, 115, 22, 0.25);
+}
+
+.fr-room-flag {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.20);
+}
+
+.fr-room-flag img {
+  width: 28px;
+  height: auto;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.fr-room-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fr-room-info h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fr-room-info span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.fr-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
+  animation: frPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes frPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(1.3); }
+}
+
+@media (max-width: 900px) {
+  .fan-rooms-v2 { padding: 40px 28px; margin: 60px 24px; }
+  .fr-grid { grid-template-columns: 1fr; gap: 32px; }
+}
+
+/* Leaflet Map Overrides */
+.leaflet-container { border-radius: 20px; z-index: 1; }
+.map-popup-content { color: #0f172a; }
+
+/* RTL Support */
+.rtl { direction: rtl; text-align: right; }
+.rtl .wc-hero-overlay {
+  flex-direction: row-reverse;
+  background: linear-gradient(to left, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.55) 50%, rgba(15, 23, 42, 0.2));
+}
+.rtl .road-tag { border-left: none; border-right: 3px solid var(--sunset-orange); }
+
+@media (max-width: 1200px) {
+  .arenas-container, .soul-grid, .itinerary-grid { grid-template-columns: 1fr; }
+  .itinerary-card-ref.popular { transform: none; }
+}
+
+@media (max-width: 768px) {
+  .wc-hero-overlay { padding: calc(var(--nav-height) + 30px) 24px 40px; flex-direction: column; align-items: flex-start; }
+  .hero-flags { flex-direction: row; }
+  .countdown-group { flex-wrap: wrap; gap: 12px; }
+  .cd-item { padding: 14px 16px; min-width: 70px; }
+  .cd-item strong { font-size: 1.6rem; }
+  .grand-arenas, .soul-kingdom, .curated-itineraries { padding: 60px 24px; }
+  .map-wrapper { height: 360px; }
+}
+
+/* ==========================================================================
+   LIGHT MODE - World Cup
+   The hero overlay stays dark (it's an image-overlay).
+   Everything else adapts to the light theme cleanly.
+   ========================================================================== */
+body.light-mode .grand-arenas,
+body.light-mode .curated-itineraries {
+  background: var(--bg);
+}
+
+body.light-mode .section-title-v2 {
+  color: var(--morocco-blue);
+}
+
+body.light-mode .map-wrapper {
+  background: #ffffff;
+  border-color: var(--border);
+}
+
+body.light-mode .match-preview {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px -10px rgba(15, 23, 42, 0.10);
+}
+
+body.light-mode .match-header {
+  color: var(--primary);
+}
+
+body.light-mode .match-item {
+  border-bottom-color: var(--border);
+  color: var(--text);
+}
+
+body.light-mode .m-date {
+  color: var(--text-muted);
+}
+
+body.light-mode .itinerary-card-ref {
+  background: #ffffff;
+  border-color: var(--border);
+  color: #0f172a;
+  box-shadow: 0 8px 28px -12px rgba(15, 23, 42, 0.12);
+}
+
+body.light-mode .itinerary-card-ref.popular {
+  border: 2px solid var(--sunset-orange);
+  box-shadow: 0 18px 40px -10px rgba(249, 115, 22, 0.30);
+}
+
+body.light-mode .it-card-top h3 {
+  color: #0f172a;
+}
+
+body.light-mode .it-desc {
+  color: #475569;
+}
+
+body.light-mode .it-feat-item {
+  color: #334155;
+}
+
+body.light-mode .feat-icon {
+  color: var(--sunset-orange);
+}
+
+body.light-mode .it-card-bottom {
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+body.light-mode .it-price-row span {
+  color: #64748b;
+}
+
+body.light-mode .it-price-row strong {
+  color: #0f172a;
+}
+
+body.light-mode .fan-rooms-v2 {
+  background: linear-gradient(135deg, rgba(190, 18, 60, 0.06), rgba(249, 115, 22, 0.05), rgba(37, 99, 235, 0.04));
+  border-color: rgba(190, 18, 60, 0.18);
+}
+
+body.light-mode .fr-stat,
+body.light-mode .fr-room-card {
+  background: #ffffff;
+}
+
+body.light-mode .fr-room-card:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+body.light-mode .fan-avatars span {
+  color: #475569;
+}
+
+body.light-mode .map-popup-content h4 {
+  color: #0f172a;
+}
+
+body.light-mode .btn-glass {
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
+body.light-mode .btn-glass:hover {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+/* Soul kingdom cards stay dark since they have image overlays — but the section bg adapts */
+body.light-mode .soul-kingdom {
+  background: var(--bg);
+}

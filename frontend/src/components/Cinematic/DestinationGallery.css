@@ -1,0 +1,516 @@
+.dest-gallery {
+  position: relative;
+  background: linear-gradient(180deg, #04050d 0%, #0a0e1f 50%, #04050d 100%);
+  color: #fff;
+  overflow: visible;
+  padding: 100px 0 0;
+}
+
+.dg-header {
+  text-align: center;
+  padding: 0 24px 80px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Sticky scroll area: this element determines the scroll budget height.
+   Inside it, .dg-sticky is position:sticky and stays at top while user scrolls. */
+.dg-pin {
+  position: relative;
+  width: 100%;
+  /* Height computed inline to match track distance; here is fallback */
+  min-height: 100vh;
+  overflow: visible;
+  transform-style: preserve-3d;
+  perspective: 1400px;
+}
+
+.dg-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  transform-style: preserve-3d;
+}
+
+.dg-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  color: #eab308;
+  margin-bottom: 18px;
+}
+
+.dg-title {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #fff;
+  margin-bottom: 18px;
+}
+
+.dg-title .grad {
+  background: linear-gradient(135deg, #eab308, #f97316, #a855f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-style: italic;
+}
+
+.dg-sub {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.dg-track-viewport {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  /* Prevent subtle text blurring during transform */
+  will-change: auto;
+}
+
+.dg-track {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 0 80px;
+  will-change: transform;
+  transform-style: preserve-3d;
+  /* Ensure full height for children alignment */
+  height: 100%;
+}
+
+.dg-card-wrap {
+  flex-shrink: 0;
+  width: 340px;
+  height: 460px;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.dg-postcard {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #0a0e1f;
+  box-shadow:
+    0 30px 60px -20px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 80px -20px var(--accent);
+  transition: box-shadow 0.4s ease;
+}
+
+.dg-postcard:hover {
+  box-shadow:
+    0 40px 80px -20px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 0 120px -20px var(--accent);
+}
+
+.dg-postcard img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  filter: brightness(0.85) saturate(1.1);
+}
+
+.dg-postcard:hover img {
+  transform: scale(1.08);
+}
+
+.dg-grad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(4, 5, 13, 0.95) 0%,
+    rgba(4, 5, 13, 0.5) 35%,
+    transparent 65%
+  );
+  z-index: 2;
+}
+
+.dg-card-stamp {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+}
+
+.dg-card-body {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  padding: 28px;
+}
+
+.dg-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.dg-card-body h3 {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #fff;
+  margin: 0 0 6px;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.dg-card-body p {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 16px;
+}
+
+.dg-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  text-transform: uppercase;
+  transition: gap 0.3s ease;
+}
+
+.dg-postcard:hover .dg-cta {
+  gap: 12px;
+}
+
+.dg-end-card {
+  flex-shrink: 0;
+  width: 340px;
+  height: 460px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 50px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(234, 179, 8, 0.1));
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.dg-end-card h3 {
+  font-size: 2.4rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 12px;
+  color: #fff;
+}
+
+.dg-end-card em {
+  background: linear-gradient(135deg, #eab308, #a855f7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-style: italic;
+}
+
+.dg-end-card p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+}
+
+/* Expand modal */
+.dg-expand {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(4, 5, 13, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dg-expand-inner {
+  width: 100%;
+  max-width: 1100px;
+  height: min(85vh, 700px);
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  background: #0a0e1f;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.8), 0 0 80px -20px var(--accent);
+}
+
+.dg-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dg-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: rotate(90deg);
+}
+
+.dg-expand-img {
+  position: relative;
+  overflow: hidden;
+}
+
+.dg-expand-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.9);
+}
+
+.dg-expand-img::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, transparent 60%, #0a0e1f 100%);
+}
+
+.dg-expand-meta {
+  padding: 60px 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #fff;
+}
+
+.dg-expand-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  margin-bottom: 18px;
+}
+
+.dg-expand-meta h2 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  margin-bottom: 14px;
+}
+
+.dg-expand-tag {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.dg-expand-desc {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 30px;
+}
+
+.dg-expand-coords {
+  display: flex;
+  gap: 24px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 30px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.dg-expand-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  padding: 14px 28px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #0a0e1f;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dg-expand-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px -8px var(--accent);
+}
+
+@media (max-width: 900px) {
+  .dest-gallery { padding: 60px 0; }
+  /* Mobile: disable sticky pinning, enable native horizontal scroll */
+  .dg-pin {
+    height: auto !important;
+    min-height: auto;
+  }
+  .dg-sticky {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+  .dg-track-viewport {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    height: auto;
+  }
+  .dg-track {
+    padding: 20px 24px 40px;
+    gap: 20px;
+    height: auto;
+  }
+  .dg-card-wrap { width: 280px; height: 400px; scroll-snap-align: center; }
+  .dg-card-body h3 { font-size: 1.8rem; }
+  .dg-end-card { width: 280px; height: 400px; padding: 40px; }
+  .dg-end-card h3 { font-size: 1.8rem; }
+
+  .dg-expand-inner {
+    grid-template-columns: 1fr;
+    height: min(90vh, 800px);
+  }
+  .dg-expand-img { height: 35%; }
+  .dg-expand-img::after {
+    background: linear-gradient(to bottom, transparent 50%, #0a0e1f 100%);
+  }
+  .dg-expand-meta { padding: 30px 28px; }
+}
+
+/* ========================================================================
+   LIGHT MODE OVERRIDES
+   ======================================================================== */
+body.light-mode .dest-gallery {
+  background: linear-gradient(180deg, var(--bg) 0%, #eef2f7 50%, var(--bg) 100%);
+  color: var(--text);
+}
+
+body.light-mode .dg-title { color: var(--text); }
+body.light-mode .dg-sub { color: var(--text-muted); }
+
+/* Postcards keep their dark overlay (image still readable). Adjust shadows. */
+body.light-mode .dg-postcard {
+  background: #ffffff;
+  box-shadow:
+    0 30px 60px -20px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(15, 23, 42, 0.06),
+    0 0 80px -30px var(--accent);
+}
+body.light-mode .dg-postcard:hover {
+  box-shadow:
+    0 40px 80px -20px rgba(15, 23, 42, 0.25),
+    0 0 0 1px rgba(15, 23, 42, 0.10),
+    0 0 120px -25px var(--accent);
+}
+
+/* Postcard text overlay still needs to be light because of the photo */
+/* (no change to .dg-card-body) */
+
+body.light-mode .dg-end-card {
+  background: linear-gradient(135deg, rgba(202, 138, 4, 0.08), rgba(168, 85, 247, 0.08));
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+}
+body.light-mode .dg-end-card h3 { color: var(--text); }
+body.light-mode .dg-end-card p { color: var(--text-muted); }
+
+/* Expand modal */
+body.light-mode .dg-expand {
+  background: rgba(248, 250, 252, 0.85);
+}
+body.light-mode .dg-expand-inner {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 40px 80px -20px rgba(15, 23, 42, 0.25),
+    0 0 80px -20px var(--accent);
+}
+body.light-mode .dg-close {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: var(--text);
+}
+body.light-mode .dg-close:hover {
+  background: rgba(15, 23, 42, 0.12);
+}
+body.light-mode .dg-expand-img::after {
+  background: linear-gradient(to right, transparent 60%, #ffffff 100%);
+}
+body.light-mode .dg-expand-meta {
+  color: var(--text);
+}
+body.light-mode .dg-expand-meta h2 { color: var(--text); }
+body.light-mode .dg-expand-tag { color: var(--text); }
+body.light-mode .dg-expand-desc { color: var(--text-muted); }
+body.light-mode .dg-expand-coords {
+  color: var(--text-muted);
+  border-color: rgba(15, 23, 42, 0.10);
+}
+body.light-mode .dg-expand-cta { color: #ffffff; }
+
+@media (max-width: 900px) {
+  body.light-mode .dg-expand-img::after {
+    background: linear-gradient(to bottom, transparent 50%, #ffffff 100%);
+  }
+}
+

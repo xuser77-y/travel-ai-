@@ -1,0 +1,135 @@
+# =============================================================================
+# TravelAI — root .gitignore
+# Covers both /backend (Node + Express) and /frontend (React + Vite)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Dependencies
+# -----------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+jspm_packages/
+bower_components/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnpm-store/
+
+# -----------------------------------------------------------------------------
+# Environment variables & secrets  (NEVER commit these)
+# backend/.env contains JWT_SECRET, GROQ_API_KEY, PEXELS_API_KEY, MONGODB_URI
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.sample
+backend/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.production.local
+
+# -----------------------------------------------------------------------------
+# Build output
+# -----------------------------------------------------------------------------
+dist/
+dist-ssr/
+build/
+out/
+.vite/
+.cache/
+.parcel-cache/
+
+# -----------------------------------------------------------------------------
+# Logs
+# -----------------------------------------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -----------------------------------------------------------------------------
+# Runtime / coverage / test artifacts
+# -----------------------------------------------------------------------------
+coverage/
+.nyc_output/
+*.lcov
+.jest-cache/
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# -----------------------------------------------------------------------------
+# Uploads (Live Map images stored as base64 are in Mongo,
+# but if any local upload folder is added later, ignore it)
+# -----------------------------------------------------------------------------
+uploads/
+backend/uploads/
+backend/tmp/
+tmp/
+temp/
+
+# -----------------------------------------------------------------------------
+# Editor / IDE
+# -----------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.swo
+.history/
+
+# Windsurf / Cursor / AI assistants
+.windsurf/
+.cursor/
+
+# -----------------------------------------------------------------------------
+# Operating system
+# -----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# -----------------------------------------------------------------------------
+# Project-specific folders (local-only assets, not part of the app)
+# -----------------------------------------------------------------------------
+assists/
+diagrams/
+
+# -----------------------------------------------------------------------------
+# Local / misc
+# -----------------------------------------------------------------------------
+*.local
+.local/
+.tmp/
+*.bak
+*.tmp
+*.orig
+
+# -----------------------------------------------------------------------------
+# TypeScript / lint caches (in case you add TS later)
+# -----------------------------------------------------------------------------
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# -----------------------------------------------------------------------------
+# Optional package manager lockfile lock — KEEP lockfiles tracked.
+# (package-lock.json and yarn.lock SHOULD be committed; do not ignore them.)
+# -----------------------------------------------------------------------------

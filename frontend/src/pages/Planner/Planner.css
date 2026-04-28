@@ -1,0 +1,466 @@
+.planner-step {
+  max-width: 750px;
+  margin: calc(var(--nav-height) + 40px) auto 60px;
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 50px;
+  animation: slideUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.step-indicator {
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.step-header h2 {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+  font-weight: 800;
+}
+
+.step-header p {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+/* Inputs */
+.input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+input[type="text"], 
+input[type="number"], 
+input[type="date"], 
+select, 
+textarea {
+  width: 100%;
+  padding: 18px 20px 18px 55px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 1.1rem;
+  color: var(--text);
+  transition: var(--transition);
+}
+
+textarea {
+  padding: 20px;
+  min-height: 150px;
+  resize: vertical;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--glass-hover);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Suggestions */
+.suggestions-list {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 8px;
+  background: var(--bg-elev);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  border-radius: 16px;
+}
+
+.suggestions-list li {
+  padding: 14px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: var(--transition);
+  font-size: 0.95rem;
+  color: var(--text);
+  border: 1px solid transparent;
+}
+
+.suggestions-list li:hover {
+  background: var(--glass-hover);
+  border-color: var(--primary);
+}
+
+.suggestions-list li svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Cards (Traveler Type, Style) */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.option-card {
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid var(--border);
+}
+
+.option-card.active {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+}
+
+.option-card .icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 15px;
+  color: var(--primary);
+}
+
+.option-card h4 {
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.option-card p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Pill Container (Interests) */
+.pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pill {
+  padding: 12px 24px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.pill.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+/* Footer Buttons */
+.step-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.btn-secondary {
+  padding: 15px 35px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.btn-secondary:hover {
+  background: var(--glass-hover);
+}
+
+/* AI Mode Toggle */
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.mode-toggle .active {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+@media (max-width: 768px) {
+  .planner-step { margin: 100px 20px; padding: 40px; }
+  .cards-grid { grid-template-columns: 1fr; }
+}
+
+/* ========================================================================
+   Step labels
+   ======================================================================== */
+.step-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.step-label-lg {
+  display: block;
+  margin-bottom: 18px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+/* ========================================================================
+   Suggestions (rich)
+   ======================================================================== */
+.input-loader {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  animation: spin 0.8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+.suggestions-list li {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  color: var(--text);
+}
+
+.suggestions-list li:hover,
+.suggestions-list li.active {
+  background: var(--glass-hover);
+}
+
+.suggestions-list li.sugg-empty {
+  cursor: default;
+  color: var(--text-muted);
+  font-style: italic;
+  justify-content: center;
+  padding: 16px;
+}
+
+.suggestions-list li.sugg-empty:hover { background: transparent; }
+
+.sugg-flag {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.sugg-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sugg-text strong {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sugg-text small {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.sugg-badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--glass-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.sugg-badge.type-city,
+.sugg-badge.type-town {
+  background: rgba(var(--primary-rgb), 0.15);
+  color: var(--primary);
+  border-color: rgba(var(--primary-rgb), 0.3);
+}
+
+.sugg-badge.type-airport {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+
+/* ========================================================================
+   Pills - active, custom, others, remove
+   ======================================================================== */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.pill-others {
+  background: var(--bg-elev);
+  border-style: dashed !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text);
+}
+
+.pill-others:hover {
+  background: var(--glass-hover);
+  border-color: var(--primary) !important;
+}
+
+.pill.pill-others.active {
+  background: rgba(var(--primary-rgb), 0.12);
+  border-color: var(--primary) !important;
+  color: var(--primary);
+}
+
+.pill.custom-pill {
+  padding-right: 8px;
+}
+
+.pill-remove {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.18);
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  margin-left: 4px;
+  padding: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.pill-remove:hover {
+  background: rgba(0, 0, 0, 0.30);
+  transform: scale(1.1);
+}
+
+/* ========================================================================
+   Custom interest input row
+   ======================================================================== */
+.custom-input-row {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.custom-input-row input {
+  flex: 1;
+  padding: 14px 18px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.custom-input-row input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--glass-hover);
+  box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.10);
+}
+
+.btn-add {
+  padding: 0 22px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn-add:hover:not(:disabled) {
+  background: var(--primary-light);
+  transform: translateY(-1px);
+}
+
+.btn-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================================================
+   LIGHT MODE OVERRIDES
+   ======================================================================== */
+body.light-mode .pill-remove {
+  background: rgba(255, 255, 255, 0.4);
+}
+body.light-mode .pill-remove:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+body.light-mode .suggestions-list {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.10);
+  box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.18);
+}
+body.light-mode .suggestions-list li:hover,
+body.light-mode .suggestions-list li.active {
+  background: rgba(15, 23, 42, 0.05);
+}
+
