@@ -464,3 +464,127 @@ body.light-mode .suggestions-list li.active {
   background: rgba(15, 23, 42, 0.05);
 }
 
+/* ===== AI mode (Step 1) ===================================================
+   "Let AI choose for me" — textarea + suggest button + result card. */
+.ai-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.ai-input-container textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(var(--primary-rgb), 0.04);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ai-input-container textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+.ai-input-container textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-suggest-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-suggest-btn .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.ai-suggestion-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.12), rgba(var(--primary-rgb), 0.04));
+  border: 1px solid rgba(var(--primary-rgb), 0.3);
+  animation: ai-suggest-in 0.3s ease;
+}
+
+@keyframes ai-suggest-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-suggestion-flag {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.ai-suggestion-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-suggestion-body strong {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.ai-suggestion-body .muted {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ai-reason {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.ai-suggestion-clear {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-suggestion-clear:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+body.light-mode .ai-input-container textarea {
+  background: #ffffff;
+}

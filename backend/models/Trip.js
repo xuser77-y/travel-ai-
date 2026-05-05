@@ -20,8 +20,20 @@ const SessionSchema = new mongoose.Schema({
 const DaySchema = new mongoose.Schema({
   dayNumber: Number,
   date: Date,
-  sessions: [SessionSchema]
+  sessions: [SessionSchema],
+  transportSuggestion: String,
+  weatherSummary: mongoose.Schema.Types.Mixed // { icon, label, tmin, tmax, rating, isGood, advice }
 });
+
+const HotelOptionSchema = new mongoose.Schema({
+  name: String,
+  description: String,
+  stars: Number,
+  pricePerNight: Number,
+  neighborhood: String,
+  amenities: [String],
+  reason: String
+}, { _id: false });
 
 const TripSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -51,16 +63,30 @@ const TripSchema = new mongoose.Schema({
   interests: [String],
   itinerary: [DaySchema],
   weather: mongoose.Schema.Types.Mixed,
+  weatherDaily: [mongoose.Schema.Types.Mixed], // [{ date, code, label, icon, tmin, tmax, rating, isGood, advice }]
   flights: {
     affiliateLink: String,
     price: Number,
-    suggestion: String
+    suggestion: String,
+    airline: String,
+    flightClass: String,
+    stops: Number,
+    durationHours: Number,
+    baggageTip: String,
+    bookingTip: String
   },
   hotels: {
     affiliateLink: String,
-    price: Number,
+    price: Number, // total stay
+    pricePerNight: Number,
     name: String,
-    description: String
+    description: String,
+    stars: Number,
+    address: String,
+    neighborhood: String,
+    amenities: [String],
+    bookingTip: String,
+    options: [HotelOptionSchema]
   },
   summary: String,
   chatRoom: { type: mongoose.Schema.Types.ObjectId, ref: 'ChatRoom' },

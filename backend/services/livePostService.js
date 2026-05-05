@@ -1,4 +1,5 @@
 const Groq = require('groq-sdk');
+const promptService = require('./promptService');
 require('dotenv').config();
 
 // Sentiment inference from type
@@ -122,22 +123,21 @@ const generateAreaSummary = async (cluster) => {
 
   try {
     const groq = new Groq({ apiKey });
-    const prompt = `You are a real-time travel intelligence analyst. Based on these short live posts from travelers in one area, produce a JSON response with two fields:
-- "summary": a single sentence (max 18 words) describing the current situation in this area.
-- "action": one of "visit" (good time to go), "avoid" (skip this area), "alternative" (suggest another route), or "monitor" (no strong signal).
 
-Posts:
-${cluster.sample.map((m, i) => `${i + 1}. ${m}`).join('\n')}
+    // Pre-format the sample into a numbered list because the template only
+    // supports flat variable substitution, not looping.
+    const context = {
+      posts: cluster.sample.map((m, i) => `${i + 1}. ${m}`).join('\n'),
+      dominantSentiment: cluster.dominantSentiment,
+      types: (cluster.types || []).join(', ')
+    };
 
-Dominant sentiment: ${cluster.dominantSentiment}.
-Types reported: ${cluster.types.join(', ')}.
-
-Return ONLY valid JSON: {"summary": "...", "action": "..."}`;
+    const { system, user } = await promptService.resolveForCall('livemap.areaSummary', context);
 
     const completion = await groq.chat.completions.create({
       messages: [
-        { role: 'system', content: 'You output only strict JSON. No markdown, no commentary.' },
-        { role: 'user', content: prompt }
+        { role: 'system', content: system },
+        { role: 'user', content: user }
       ],
       model: 'llama-3.3-70b-versatile',
       response_format: { type: 'json_object' },

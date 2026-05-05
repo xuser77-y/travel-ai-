@@ -32,6 +32,12 @@ const Step1Destination = () => {
   const [isAiMode, setIsAiMode] = useState(false);
   const [activeIdx, setActiveIdx] = useState({ start: -1, dest: -1 });
 
+  // AI-mode state: free-form description + the city the LLM picks for it.
+  const [aiDescription, setAiDescription] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+
   const startCancelRef = useRef(null);
   const destCancelRef = useRef(null);
   const startTimerRef = useRef(null);
@@ -137,8 +143,46 @@ const Step1Destination = () => {
     }
   };
 
+  // Ask the backend to pick + geocode a destination from the free-form
+  // description. On success we mirror the result into the same fields the
+  // manual flow uses so the rest of the planner just works.
+  const fetchAiSuggestion = async () => {
+    const desc = aiDescription.trim();
+    if (desc.length < 5) {
+      setAiError('Please describe your dream trip in at least a few words.');
+      return;
+    }
+    setAiLoading(true);
+    setAiError('');
+    setAiSuggestion(null);
+    try {
+      const res = await axios.post('http://localhost:5000/api/trips/suggest-destination', {
+        description: desc
+      });
+      const { destination, reason } = res.data;
+      setFormData({ destination });
+      setDestQuery(destination.name);
+      setAiSuggestion({ ...destination, reason });
+    } catch (err) {
+      setAiError(err.response?.data?.error || err.message || 'AI suggestion failed.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const clearAiSuggestion = () => {
+    setAiSuggestion(null);
+    setDestQuery('');
+    setFormData({ destination: { name: '', lat: null, lon: null, country_code: null } });
+  };
+
   const handleNext = () => {
-    if (destQuery) {
+    // Block in AI mode until the user has actually accepted a suggestion.
+    if (isAiMode && !formData.destination?.lat) {
+      setAiError('Pick a destination first — click "Find my destination".');
+      return;
+    }
+    if (formData.destination?.name || destQuery) {
       navigate('/planner/step2');
     }
   };
@@ -246,21 +290,63 @@ const Step1Destination = () => {
           </div>
         ) : (
           <div className="ai-input-container">
-            <textarea 
+            <textarea
               placeholder="Describe your dream trip (e.g. 'I want a sunny beach destination with great seafood and historical sites')"
-              onChange={(e) => setFormData({ destination: { ...formData.destination, description: e.target.value } })}
-            ></textarea>
+              value={aiDescription}
+              onChange={(e) => { setAiDescription(e.target.value); setAiError(''); }}
+              disabled={aiLoading}
+            />
+            <button
+              type="button"
+              className="btn-primary ai-suggest-btn"
+              onClick={fetchAiSuggestion}
+              disabled={aiLoading || aiDescription.trim().length < 5}
+            >
+              {aiLoading ? (
+                <><Loader2 size={16} className="spin" /> Picking the perfect city…</>
+              ) : (
+                <><Sparkles size={16} /> {aiSuggestion ? 'Try a different city' : 'Find my destination'}</>
+              )}
+            </button>
+
+            {aiError && <p className="ai-error">{aiError}</p>}
+
+            {aiSuggestion && (
+              <div className="ai-suggestion-card">
+                <div className="ai-suggestion-flag">
+                  {codeToFlag(aiSuggestion.country_code) || '✨'}
+                </div>
+                <div className="ai-suggestion-body">
+                  <strong>{aiSuggestion.city || aiSuggestion.name}</strong>
+                  {aiSuggestion.country && <span className="muted">{aiSuggestion.country}</span>}
+                  {aiSuggestion.reason && <p className="ai-reason">"{aiSuggestion.reason}"</p>}
+                </div>
+                <button type="button" className="ai-suggestion-clear" onClick={clearAiSuggestion}>
+                  Change
+                </button>
+              </div>
+            )}
           </div>
         )}
 
-        <div className="mode-toggle" onClick={() => setIsAiMode(!isAiMode)}>
+        <div
+          className="mode-toggle"
+          onClick={() => {
+            setIsAiMode(!isAiMode);
+            setAiError('');
+          }}
+        >
           <Sparkles size={18} className={isAiMode ? 'active' : ''} />
           <span>{isAiMode ? "Back to manual search" : "Let AI choose for me"}</span>
         </div>
       </div>
 
       <div className="step-footer">
-        <button className="btn-primary" onClick={handleNext} disabled={!destQuery && !isAiMode}>
+        <button
+          className="btn-primary"
+          onClick={handleNext}
+          disabled={isAiMode ? !aiSuggestion : !destQuery}
+        >
           Next Step
         </button>
       </div>

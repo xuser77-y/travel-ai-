@@ -351,6 +351,45 @@
   .ss-divider { display: none; }
 }
 
+/* Alternative options list (flights & hotels) */
+.alt-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.alt-title {
+  margin: 0 0 2px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.alt-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.alt-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+}
+.alt-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.alt-main strong { font-size: 0.92rem; color: var(--text); font-weight: 700; }
+.alt-meta { font-size: 0.78rem; color: var(--text-muted); }
+.alt-reason { font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 2px; }
+.alt-price {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.alt-price small { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); margin-left: 2px; }
+
+.rh-stars { display: inline-flex; gap: 2px; margin-left: 6px; }
+
 /* Light mode tweaks */
 body.light-mode .booking-section {
   background: #ffffff;

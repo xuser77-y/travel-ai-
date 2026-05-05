@@ -8,7 +8,8 @@ const ChatRoom = require('../models/ChatRoom');
 const LivePost = require('../models/LivePost');
 const onlineTracker = require('../services/onlineTracker');
 const apiTracker = require('../services/apiTracker');
-const { hashPassword } = require('../services/password');
+const promptService = require('../services/promptService');
+const { hashPassword, verifyPassword } = require('../services/password');
 require('dotenv').config();
 
 // ---------------------------------------------------------------------------
@@ -482,6 +483,106 @@ router.post('/api-usage/reset', (req, res) => {
     apiTracker.reset();
     res.json({ ok: true });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// VERIFY PASSWORD — re-authentication gate for sensitive admin actions
+// (currently used to unlock the Prompts editor). We load the password hash
+// fresh because the admin middleware strips it from the cached user.
+// ---------------------------------------------------------------------------
+router.post('/verify-password', async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Password is required' });
+    }
+    const full = await User.findById(req.adminUser._id).select('+password password');
+    if (!full) return res.status(404).json({ error: 'User not found' });
+    const ok = verifyPassword(password, full.password);
+    if (!ok) return res.status(401).json({ error: 'Incorrect password' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// AI PROMPTS — list / update / reset the editable prompt templates used by
+// the itinerary generator, refinement chat, and live-map area summaries.
+// ---------------------------------------------------------------------------
+router.get('/prompts', async (req, res) => {
+  try {
+    const prompts = await promptService.listPrompts();
+    res.json({ items: prompts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/prompts/:key', async (req, res) => {
+  try {
+    const prompt = await promptService.getPrompt(req.params.key);
+    if (!prompt) return res.status(404).json({ error: 'Unknown prompt key' });
+    res.json(prompt);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/prompts/:key', async (req, res) => {
+  try {
+    const { systemPrompt, userTemplate, password } = req.body || {};
+    // Re-verify password on every save so a stolen token alone cannot
+    // silently rewrite the AI prompts.
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Password is required to save prompt changes' });
+    }
+    const full = await User.findById(req.adminUser._id).select('+password password');
+    if (!full) return res.status(404).json({ error: 'User not found' });
+    if (!verifyPassword(password, full.password)) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+
+    if (typeof systemPrompt !== 'string' && typeof userTemplate !== 'string') {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    await promptService.setPrompt(
+      req.params.key,
+      { systemPrompt, userTemplate },
+      { userId: req.adminUser._id, email: req.adminUser.email }
+    );
+    const fresh = await promptService.getPrompt(req.params.key);
+    res.json(fresh);
+  } catch (err) {
+    if (err.message?.startsWith('Unknown prompt key')) {
+      return res.status(404).json({ error: err.message });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/prompts/:key/reset', async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Password is required to reset a prompt' });
+    }
+    const full = await User.findById(req.adminUser._id).select('+password password');
+    if (!full) return res.status(404).json({ error: 'User not found' });
+    if (!verifyPassword(password, full.password)) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+
+    await promptService.resetPrompt(req.params.key);
+    const fresh = await promptService.getPrompt(req.params.key);
+    res.json(fresh);
+  } catch (err) {
+    if (err.message?.startsWith('Unknown prompt key')) {
+      return res.status(404).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });

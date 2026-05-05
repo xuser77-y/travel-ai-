@@ -1,18 +1,20 @@
-# TravelAI — AI‑Powered Travel Planning Platform
+# TravelAI — AI-Powered Travel Planning Platform
 
-> Plan smarter. Travel together. A full‑stack platform that combines AI itinerary generation, real‑time community signals, interactive maps, and a dedicated **FIFA World Cup 2030 Morocco** companion experience.
+> Plan smarter. Travel together. A full-stack platform that combines AI itinerary generation, real-time community signals, an interactive live map, persistent fan hubs, a dedicated **FIFA World Cup 2030 Morocco** companion experience, and a complete admin console with live operational metrics and editable AI prompts.
 
 ---
 
 ## 1. Vision
 
-TravelAI is built around a single idea: *travel planning should feel alive*. Instead of static guides, the app generates a personalized day‑by‑day itinerary in seconds, lets travelers share what's actually happening on the ground in real time, and adds a curated companion mode for the **2030 World Cup co‑hosted by Morocco, Spain and Portugal**.
+TravelAI is built around a single idea: *travel planning should feel alive*. Instead of static guides, the app generates a personalized day-by-day itinerary in seconds, lets travelers share what's actually happening on the ground in real time, and adds a curated companion mode for the **2030 World Cup co-hosted by Morocco, Spain and Portugal**.
 
-The platform ships with three first‑class experiences:
+The platform ships with five first-class experiences:
 
-- **AI Planner** — Multi‑step form → Groq LLM → ranked itinerary with weather, hotels, flights, POIs and a chat assistant for refinements.
-- **Live Map** — A real‑time map where travelers drop posts (text + photo + emotion), see clustered crowd activity per area, and get AI‑generated area summaries.
-- **World Cup 2030** — Host‑city showcase, stadium grid, countdown, curated AI itineraries per host city, and entry into fan rooms.
+- **AI Planner** — Multi-step form → Groq LLM → ranked itinerary with weather, hotels, flights, POIs and a chat assistant for refinements.
+- **Live Map** — A real-time map where travelers drop posts (text + photo + emotion), see clustered crowd activity per area, and get AI-generated area summaries.
+- **Community Hubs** — Persistent chat rooms per destination with invite codes, join/leave persistence, presence and message moderation.
+- **World Cup 2030** — Host-city showcase, stadium grid, countdown, curated AI itineraries per host city, and entry into fan rooms.
+- **Admin Console** — Live dashboard for users, trips, hubs, live posts, API usage, and a password-gated editor for every AI prompt the app uses.
 
 ---
 
@@ -23,30 +25,32 @@ The platform ships with three first‑class experiences:
 - **React Router v6** for routing
 - **Zustand** for global state (`tripStore`)
 - **Framer Motion** for UI motion and the 3D landing intro
-- **react‑leaflet** + **Leaflet** for all maps
-- **socket.io‑client** for live updates
+- **react-leaflet** + **Leaflet** for all maps
+- **socket.io-client** singleton for live updates and presence
 - **axios** for HTTP
 - **i18next** for i18n (EN / FR / AR with RTL)
 - **Lucide React** icons
-- Plain CSS with CSS variables — full **light / dark mode** via `[data-theme]` attribute
+- Plain CSS with CSS variables — full **light / dark mode** via `body.light-mode` toggle
+- **In-app `useToast()` and `useConfirm()` providers** that replace every `alert()` and `window.confirm()` across the app
 
 ### Backend (`/backend`)
 - **Node.js** + **Express**
 - **MongoDB** + **Mongoose**
-- **socket.io** for real‑time events
-- **JWT** auth (`jsonwebtoken`) + **bcryptjs**
-- **groq-sdk** — LLM provider for itinerary generation, refinement, and live‑map area summaries
-- **node‑cache** — caches search/photo/POI/weather lookups
+- **socket.io** for real-time events and online-user tracking
+- **JWT** auth (`jsonwebtoken`) — passwords hashed with **Node's built-in `crypto.scrypt`** (no bcrypt dependency); legacy plaintext records auto-upgrade on next login
+- **groq-sdk** — LLM provider for itinerary generation, refinement, and live-map area summaries
+- **node-cache** — caches search/photo/POI/weather lookups
+- **API tracker middleware** — counts every `/api/*` call by route + status, keeps a rolling buffer of recent calls for the admin console
 - External APIs:
   - **Photon (Komoot)** — primary city autocomplete
   - **Nominatim (OSM)** — fallback geocoding
-  - **Open‑Meteo** — weather forecast
+  - **Open-Meteo** — weather forecast
   - **Pexels** — destination photos
   - **Overpass API** — nearby POIs
 
 ### Storage / Infra
 - MongoDB local (`mongodb://localhost:27017/travelai`)
-- Multer in‑memory upload → base64 stored on `LivePost.imageData`
+- Multer in-memory upload → base64 stored on `LivePost.imageData`
 
 ---
 
@@ -57,33 +61,50 @@ test project/
 ├── backend/
 │   ├── server.js                 # Express + Socket.io bootstrap
 │   ├── routes/
-│   │   ├── auth.js               # POST /api/auth/login (signup-or-login)
+│   │   ├── auth.js               # POST /api/auth/signup, /api/auth/login
 │   │   ├── trips.js              # generate / list / get / delete / refine trips
 │   │   ├── search.js             # /api/search/proxy (Photon + Nominatim)
 │   │   ├── livemap.js            # posts CRUD + clusters + summary
-│   │   └── worldcup.js           # /api/worldcup/cities (stadium dataset)
+│   │   ├── chat.js               # hub list / join / leave / messages
+│   │   ├── worldcup.js           # /api/worldcup/cities (stadium dataset)
+│   │   └── admin.js              # all /api/admin/* endpoints
 │   ├── services/
-│   │   ├── aiService.js          # Groq itinerary + refine
-│   │   ├── photoService.js       # Pexels destination photo
+│   │   ├── aiService.js          # Groq itinerary + refine (uses promptService)
 │   │   ├── livePostService.js    # AI area summary + heuristic fallback
-│   │   └── poiService.js         # Overpass POI fetch
+│   │   ├── chatService.js        # findOrCreateRoom + ensureUserJoined
+│   │   ├── photoService.js       # Pexels destination photo
+│   │   ├── poiService.js         # Overpass POI fetch
+│   │   ├── weatherService.js     # Open-Meteo forecast
+│   │   ├── plannerOrchestrator.js# parallel fetch + AI fallback
+│   │   ├── promptService.js      # registry/loader/renderer for AI prompts
+│   │   ├── password.js           # scrypt hash + verify (with legacy upgrade)
+│   │   ├── apiTracker.js         # counts/labels/recent calls per route
+│   │   └── onlineTracker.js      # socket.id → user mapping for presence
 │   ├── models/
-│   │   ├── User.js               # email + bcrypt hash
+│   │   ├── User.js               # email + scrypt hash + isAdmin/disabled + activity
 │   │   ├── Trip.js               # full itinerary doc
-│   │   └── LivePost.js           # geo + emotion + base64 image
+│   │   ├── LivePost.js           # geo + sentiment + base64 image
+│   │   ├── ChatRoom.js           # hub with messages, participants, inviteCode
+│   │   ├── TripRoom.js           # legacy/light wrapper around ChatRoom
+│   │   └── AiPrompt.js           # admin-editable prompt overrides (per key)
 │   └── .env                      # see §6
 └── frontend/
     └── src/
         ├── pages/
         │   ├── Landing.jsx       # 3D intro (one-shot per refresh)
-        │   ├── Dashboard.jsx     # trip cards with delete + photo bg
+        │   ├── Login.jsx         # split signup/login form with auto-mode-switch
+        │   ├── Dashboard.jsx     # trip cards with delete (toast + confirm)
         │   ├── Planner/          # 7-step planner
         │   ├── TripResults.jsx   # itinerary, weather, hotels, flights, chat
         │   ├── LiveMap.jsx       # real-time map + my recent posts
-        │   ├── Community.jsx     # fan rooms / forum entry
-        │   └── WorldCup.jsx      # host cities + AI planners + fan card
+        │   ├── Community.jsx     # persistent hubs + invite codes + presence
+        │   ├── WorldCup.jsx      # host cities + AI planners + fan card
+        │   └── Admin.jsx         # full admin console (8 sections)
         ├── stores/tripStore.js
-        ├── components/           # Navbar, AnimatedPage, etc.
+        ├── lib/socket.js         # singleton socket.io client + identify()
+        ├── components/
+        │   ├── UI/               # Toast, ConfirmDialog providers
+        │   └── ...
         └── i18n/                 # EN / FR / AR translations
 ```
 
@@ -91,32 +112,44 @@ test project/
 
 ## 4. Implemented Features
 
-### 4.1 Auth
-- `POST /api/auth/login` — single endpoint that **creates an account if email is unknown** or logs in if it exists, returning a 7‑day JWT.
-- JWT secret loaded from `JWT_SECRET`.
-- Frontend stores `token` in `localStorage`; Zustand exposes `setToken` / `setUser`.
+### 4.1 Auth (split signup / login)
+Two strict, dedicated endpoints — no more "signup-or-login" magic:
+
+| Method | Path                  | Behaviour |
+|--------|-----------------------|-----------|
+| POST   | `/api/auth/signup`    | Creates an account or returns `409 This email is already registered.` |
+| POST   | `/api/auth/login`     | Verifies credentials, returns `404 No account found...` or `401 Incorrect password.` as appropriate |
+
+- Passwords are hashed with `crypto.scrypt` (`scrypt:<salt>:<hash>` format). Legacy plaintext records upgrade transparently on next successful login.
+- 7-day JWT signed with `JWT_SECRET`.
+- The frontend `Login.jsx`:
+  - Inline error banner + per-status toasts (welcome / "you already have an account" / "no account found" / "incorrect password").
+  - **Auto-bounces** between Sign In and Sign Up when the server says you're in the wrong mode.
+  - Client-side validation for empty fields + minimum password length.
 
 ### 4.2 AI Planner (7 steps)
 Steps 1–7: Destination → Dates → Travelers/Budget → Style → Interests/Diet → Review → Loading.
 
-- **Step 1 — Destination**: debounced autocomplete with cancellation, keyboard navigation, flags, type chips. **Photon** primary, **Nominatim** fallback. The dropdown no longer flashes *"No matches"* after a selection — fixed by tracking the last fetched query and the input‑focus state.
+- **Step 1 — Destination (manual)**: debounced autocomplete with cancellation, keyboard navigation, flags, type chips. **Photon** primary, **Nominatim** fallback.
+- **Step 1 — Destination (AI)**: a **"Let AI choose for me"** toggle reveals a free-form textarea ("describe your dream trip"). Clicking **Find my destination** calls `POST /api/trips/suggest-destination`, which asks Groq for a single real city, then geocodes it through the same search proxy as the manual flow. The result appears as a card with flag, city/country and a one-line AI reason; users can accept it or click **Change** to regenerate. Next is gated until a real destination (with `lat`/`lon`) is locked in, so the rest of the planner never receives a half-filled state.
 - **Step 4 — Interests / Dietary**: predefined chips + an **"Others"** option that opens a custom input, with removable pills.
 - **Loading**: animated globe + step list, posts to `POST /api/trips/generate` with the JWT so the trip is bound to the user.
-- **Result**: navigates to `/trip/:id`. The store keeps `currentTrip`; if missing (deep link / refresh), `TripResults` re‑fetches by ID with the JWT.
+- **Result**: navigates to `/trip/:id`. The store keeps `currentTrip`; if missing (deep link / refresh), `TripResults` re-fetches by ID with the JWT.
 
 ### 4.3 Trips API
-| Method | Path                    | Auth        | Notes |
-|--------|-------------------------|-------------|-------|
-| POST   | `/api/trips/generate`   | optional    | Generates itinerary via Groq, fetches weather, photo, POIs, persists with `userId` if token present |
-| GET    | `/api/trips/user/me`    | required    | Lists trips owned by the current user |
-| GET    | `/api/trips/:id`        | optional*   | Returns one trip; ownership check if it has a `userId` |
-| DELETE | `/api/trips/:id`        | required    | Deletes only if `trip.userId === req.user.id` |
-| POST   | `/api/trips/:id/refine` | optional    | Sends user message to Groq; merges patch into trip |
+| Method | Path                                | Auth     | Notes |
+|--------|-------------------------------------|----------|-------|
+| POST   | `/api/trips/generate`               | optional | Generates itinerary via Groq, fetches weather, photo, POIs, persists with `userId` if token present |
+| POST   | `/api/trips/suggest-destination`    | none     | Powers Step 1's "Let AI choose for me": LLM picks one city from a free-form description, then geocodes via the search proxy |
+| GET    | `/api/trips/user`                   | required | Lists trips owned by the current user |
+| GET    | `/api/trips/:id`                    | optional | Returns one trip; ownership check if it has a `userId` |
+| DELETE | `/api/trips/:id`                    | required | Deletes only if `trip.userId === req.user.id` |
+| POST   | `/api/trips/refine`                 | optional | Sends user message to Groq; merges patch into trip |
 
 ### 4.4 Dashboard
-- Cards rebuilt with **photo background**, status chip, date range, day count, and a **Delete** button (calls `DELETE /api/trips/:id`).
-- Empty / loading / error states.
-- Full **light‑mode** overrides for cards, stats, buttons and responsive grid.
+- Cards with **photo background**, status chip, date range, day count and a **Delete** button.
+- Delete now uses the in-app `useConfirm()` modal (no `window.confirm()`) and a toast on success/error.
+- Empty / loading / error states + full **light-mode** overrides.
 
 ### 4.5 Trip Results
 - Tabs: Itinerary, Weather, Hotels, Flights, Chat.
@@ -126,58 +159,143 @@ Steps 1–7: Destination → Dates → Travelers/Budget → Style → Interests/
 
 ### 4.6 Live Map
 - **ThemedTileLayer** swaps OSM tiles between dark Carto and light Carto on theme change.
-- **Stable `authorId`**: logged‑in users use their JWT id; guests get a UUID persisted in `localStorage` so they keep ownership across sessions.
-- **Pick a custom location** by clicking the map; chip + popup expose a **Remove** button to revert to live geolocation.
-- **Create a post** with text, emotion and an optional image (base64, Multer in‑memory).
-- **My Recent Posts** panel with a **Delete** button per post; deletions are optimistic and confirmed by a `livepost:deleted` socket event.
-- **Clusters** overlay: aggregated counts per zone with an AI‑generated area summary (Groq → heuristic fallback).
-- **Real‑time**: `livepost:created` and `livepost:deleted` broadcast over Socket.io.
+- **Stable `authorId`**: logged-in users use their JWT id; guests get a UUID persisted in `localStorage` so they keep ownership across sessions.
+- **Pick a custom location** by clicking the map; chip + popup expose a **Remove** button.
+- **Create a post** with text, emotion and an optional image (base64, Multer in-memory).
+- **My Recent Posts** panel with a **Delete** button per post; deletions are optimistic and confirmed by a `livemap:delete_post` socket event.
+- **Clusters** overlay: aggregated counts per zone with an AI-generated area summary (Groq → heuristic fallback).
+- **Real-time**: `livemap:new_post` and `livemap:delete_post` broadcast over Socket.io.
+- All confirmations / failures use the in-app toast + confirm modals.
 
 #### Live Map API
 | Method | Path                          | Notes |
 |--------|-------------------------------|-------|
 | GET    | `/api/livemap/posts`          | Recent posts within optional bbox |
-| POST   | `/api/livemap/posts`          | Multipart, persists `authorId`, broadcasts |
-| DELETE | `/api/livemap/posts/:id`      | Verifies `authorId` from header before deleting + broadcasts |
+| POST   | `/api/livemap/posts`          | Persists `authorId`, broadcasts `livemap:new_post` |
+| DELETE | `/api/livemap/posts/:id`      | Verifies `authorId` before deleting; broadcasts `livemap:delete_post` |
 | GET    | `/api/livemap/clusters`       | Aggregated zone counts |
-| GET    | `/api/livemap/summary`        | AI area summary for a cluster |
+| POST   | `/api/livemap/summary`        | AI area summary for a cluster (uses editable prompt) |
 
-### 4.7 Search Proxy
+### 4.7 Community Hubs
+- Real persistent chat rooms (`ChatRoom` model) — not scaffolding anymore.
+- **Auto-creation**: every new trip creates / reuses a destination hub via `chatService.findOrCreateRoom`.
+- **Invite codes** (6-char hex) — paste one to join a private room.
+- **Persistent membership**: `User.joinedHubs` mirrors room membership so the Community page knows which rooms are joined without an extra round-trip.
+- **Live messages + presence** via Socket.io rooms; member counts adjust on join/leave.
+- All `alert()`/`window.confirm()` calls have been replaced by toasts and an in-app confirm dialog.
+
+### 4.8 Search Proxy
 `GET /api/search/proxy?q=...` →
-1. Calls **Photon** (`/api/photon` upstream) with `osm_tag=place:city` priorities.
+1. Calls **Photon** with `osm_tag=place:city` priorities.
 2. Falls back to **Nominatim** if Photon returns nothing.
-3. Boosts ranking for `city` / `town` types, preserves provider order tie‑breaker.
+3. Boosts ranking for `city` / `town` types, preserves provider order tie-breaker.
 4. Caches results in `node-cache` for 6h.
 
-### 4.8 World Cup 2030
-- **Hero** with countdown, host‑country flags, official badge.
+### 4.9 World Cup 2030
+- **Hero** with countdown, host-country flags, official badge.
 - **Stadium showcase grid** with photo cards.
 - **Interactive map** with numbered markers + popups for each host city.
-- **AI‑Powered Planner cards** — one per host city. Clicking prefills the planner store (destination, dates, interests) and routes to `/planner/step1`.
-- **Fan Rooms card** — redesigned with stats, links to `/community`.
-- Theme‑aware Leaflet tiles and full light/dark CSS.
-
-### 4.9 Community
-- Fan rooms / forum scaffolding linked from World Cup and main nav.
-- Light/dark theming.
+- **AI-Powered Planner cards** — one per host city. Clicking prefills the planner store and routes to `/planner/step1`.
+- **Fan Rooms card** linked to `/community`.
+- Theme-aware Leaflet tiles and full light/dark CSS.
 
 ### 4.10 Landing Page
-- 3D animated intro (Framer Motion) gated by a **module‑level flag** so the animation runs only on **first load or full page refresh**, never on SPA navigation back to `/`.
+- 3D animated intro (Framer Motion) gated by a **module-level flag** so the animation runs only on **first load or full page refresh**.
 
 ### 4.11 i18n
 - EN / FR / AR with RTL flipping.
 - Translations cover Navbar, Planner, Live Map, World Cup, Community, Dashboard.
 
+### 4.12 Admin Console (`/admin`)
+Eight sections in one dashboard, all gated by JWT + `user.isAdmin === true` (re-checked from the DB on every request so demoting is instant):
+
+| Section       | What it shows / does                                                                 |
+|---------------|---------------------------------------------------------------------------------------|
+| **Overview**  | Top-level counts (users, admins, disabled, trips, hubs, live posts, total messages) |
+| **Users**     | Search, paginate, promote/demote admin, disable/enable, delete user (and their trips), reset password |
+| **Online now**| Live socket list (user / IP / user-agent / connected-since / socket id), polled every 5 s |
+| **Trips**     | All trips with paginated list, open detail modal, delete trip or single activity     |
+| **Hubs**      | All chat rooms, open messages modal, edit/delete individual messages, delete hub     |
+| **Live Posts**| Every live post; delete; **realtime**: subscribes to `livemap:new_post` / `livemap:delete_post` so new posts appear instantly without manual refresh; manual `Refresh` button as belt-and-suspenders |
+| **API Usage** | Per-route call counts, status breakdown, success rate, recent-call buffer, reset button |
+| **AI Prompts**| **Password-gated** editor for every LLM prompt (see §4.13)                           |
+
+All destructive actions use the in-app `useConfirm()` modal with copy explaining the consequences; outcomes are reported via toasts.
+
+#### Admin API (selection)
+```
+GET    /api/admin/stats
+GET    /api/admin/online
+GET    /api/admin/users               (q, page, limit)
+PATCH  /api/admin/users/:id           ({ isAdmin?, disabled? })
+DELETE /api/admin/users/:id
+POST   /api/admin/users/:id/password  ({ newPassword })
+GET    /api/admin/trips               (page, limit)
+GET    /api/admin/trips/:id
+DELETE /api/admin/trips/:id
+DELETE /api/admin/trips/:id/days/:dayIdx/sessions/:sessionIdx
+GET    /api/admin/rooms
+DELETE /api/admin/rooms/:id
+GET    /api/admin/rooms/:id/messages
+PATCH  /api/admin/rooms/:id/messages/:msgId
+DELETE /api/admin/rooms/:id/messages/:msgId
+GET    /api/admin/liveposts
+DELETE /api/admin/liveposts/:id
+GET    /api/admin/api-usage
+POST   /api/admin/api-usage/reset
+POST   /api/admin/verify-password
+GET    /api/admin/prompts
+GET    /api/admin/prompts/:key
+PATCH  /api/admin/prompts/:key
+POST   /api/admin/prompts/:key/reset
+```
+
+### 4.13 Editable AI Prompts (password-gated)
+
+Every LLM call in the app pulls its prompt from the `promptService` registry at runtime. Admins can rewrite each prompt without redeploying.
+
+**Registered prompts:**
+
+| Key                        | Where it's used                                                | Variables available                                                                       |
+|----------------------------|----------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| `itinerary.generate`       | `aiService.generateItinerary` (planner)                        | `destination`, `dates.start/end`, `travelers`, `style`, `budget.currency/total`, `interests`, `dietary`, `weather`, `pois` |
+| `itinerary.refine`         | `aiService.refineItinerary` (chat)                             | `destination`, `style`, `budget.currency`, `userMessage`                                  |
+| `destination.suggest`      | `POST /api/trips/suggest-destination` (Step 1 "Let AI choose") | `description`                                                                             |
+| `livemap.areaSummary`      | `livePostService.generateAreaSummary`                          | `posts`, `dominantSentiment`, `types`                                                     |
+
+**Templating:** `{{dot.notation}}` placeholders are substituted at call time; objects are stringified as JSON; missing values render as empty strings (never crashes the AI call).
+
+**Storage:** overrides live in the `AiPrompt` collection (one document per `key`). If no document exists for a key the code default is used. Resetting deletes the override document.
+
+**Security:**
+- The `AI Prompts` admin tab is locked behind a **password re-verification** screen — a stolen JWT alone cannot rewrite prompts.
+- `POST /api/admin/verify-password` checks the password against the currently logged-in admin's scrypt hash and unlocks the section in component state only.
+- The password is held in memory while the section is mounted and is cleared the moment the admin navigates away or hits **Lock editor**.
+- Every `PATCH /api/admin/prompts/:key` and `POST /api/admin/prompts/:key/reset` call also re-checks the password server-side.
+
+**UI:**
+- Each prompt is an expandable card with title, description, available-variables chips, system-prompt textarea, user-template textarea, save / reset / discard-changes buttons, last-edited stamp, and a `Customized` / `Default` badge.
+
+### 4.14 In-app Toasts and Confirm Dialogs
+Every previous `alert()` / `window.confirm()` across `Login`, `Dashboard`, `Community`, `LiveMap`, and `Admin` has been replaced by:
+
+- **`useToast()`** — tiny pub-sub provider, success / error / warning / info, animated, auto-dismiss, stacked top-right.
+- **`useConfirm()`** — promise-based modal with title / message / variant (default | danger), Esc to cancel, Enter to confirm, click-outside to cancel.
+
+Both providers wrap the app in `App.jsx`.
+
 ---
 
-## 5. Real‑time Events
+## 5. Real-time Events
 
-| Event              | Payload                            | Emitted by                |
-|--------------------|------------------------------------|---------------------------|
-| `livepost:created` | the new `LivePost` doc             | `POST /api/livemap/posts` |
-| `livepost:deleted` | `{ _id }`                          | `DELETE /api/livemap/posts/:id` |
+| Event                  | Payload                            | Emitted by                          |
+|------------------------|------------------------------------|-------------------------------------|
+| `livemap:new_post`     | the new `LivePost` doc             | `POST /api/livemap/posts`           |
+| `livemap:delete_post`  | `{ _id }`                          | `DELETE /api/livemap/posts/:id`     |
+| `chat:message`         | `{ roomId, message }`              | `POST /api/chat/rooms/:id/messages` |
+| `presence:update`      | `{ counts, sockets }`              | online tracker on connect/disconnect |
 
-Frontend `LiveMap.jsx` subscribes on mount and updates state without re‑fetching.
+`LiveMap.jsx`, `Community.jsx`, and `Admin.jsx` (Live Posts + Online sections) all subscribe via the singleton client in `frontend/src/lib/socket.js`. The admin's Live Posts section now also subscribes to `livemap:new_post`/`livemap:delete_post`, fixing the previous glitch where new posts didn't appear until the admin switched sections.
 
 ---
 
@@ -193,7 +311,14 @@ PEXELS_API_KEY=<your_pexels_key>
 JWT_SECRET=<long_random_string>
 ```
 
-Frontend reads `VITE_API_URL` (defaults to `http://localhost:5000`).
+Frontend points to `http://localhost:5000` from `frontend/src/pages/*.jsx` and `frontend/src/lib/socket.js`.
+
+### Bootstrapping the first admin
+- Sign up normally, then in MongoDB set `isAdmin: true` on your user document, e.g.:
+  ```js
+  db.users.updateOne({ email: 'you@example.com' }, { $set: { isAdmin: true } })
+  ```
+- After that, additional admins can be promoted from the **Users** tab in the console.
 
 ---
 
@@ -226,24 +351,28 @@ Get-NetTCPConnection -LocalPort 5000 | Select-Object -ExpandProperty OwningProce
 
 ---
 
-## 8. Recent Polish (this checkpoint)
+## 8. Recent Polish
 
-- **Search**: Photon primary + Nominatim fallback, ranking boosts for city/town.
-- **Step1Destination**: dropdown no longer shows "No matches" right after picking a city.
-- **LiveMap**: Remove button on picked‑location chip *and* popup; My Recent Posts panel with delete; backend ownership + socket broadcast on delete; `LivePost.authorId` typed as String to support guest UUIDs.
-- **WorldCup**: AI‑Powered Planner cards prefill the planner store; Fan Rooms card redesigned and links to `/community`; numbered map markers; theme‑aware tiles.
-- **Landing**: 3D intro plays once per refresh, not on every navigation.
-- **Light/Dark**: comprehensive overrides on WorldCup, LiveMap, Community, Landing, Dashboard, TripResults.
+- **Auth split**: `/api/auth/signup` + `/api/auth/login` with friendly status codes; frontend auto-bounces between modes.
+- **Toast + Confirm system**: app-wide replacement for `alert()` / `window.confirm()` in Login, Dashboard, Community, LiveMap, and Admin (including modals).
+- **Admin Console**: Overview, Users, Online, Trips, Hubs, Live Posts, API Usage, AI Prompts.
+- **Realtime admin Live Posts**: subscribes to `livemap:new_post` / `livemap:delete_post` so posts appear instantly; manual `Refresh` button as a fallback.
+- **Editable AI Prompts**: admin-editable templates with `{{var}}` substitution, `Customized`/`Default` badges, last-edited stamps, in-memory password re-auth, and per-call server-side verification on every save/reset.
+- **Step 1 "Let AI choose for me" — fixed**: was a dead textarea that left `destination.lat`/`lon` empty and broke later steps. Now hits `POST /api/trips/suggest-destination` (Groq → single-city pick → Photon/Nominatim geocode), shows a suggestion card with flag + reason, allows regenerate, and gates Next until a real, geocoded destination is chosen. The wording is editable from the admin **AI Prompts** tab (`destination.suggest`).
+- **Hubs**: real persistent rooms with invite codes, presence, message moderation, and message editing/deletion in the admin modal.
+- **Password hashing**: switched from bcrypt-style to native `crypto.scrypt`; legacy plaintext upgrades on next login.
+- **API tracker**: per-route counts + recent-calls buffer powering the `API Usage` admin tab.
+- **Light/Dark**: full overrides for the new admin Prompts editor (lock screen, cards, textareas, badges).
 
 ---
 
 ## 9. Known Limitations
 
-- Auth is a single endpoint (login‑or‑signup); no email verification, password reset, OAuth, or rate limiting yet.
+- No email verification, password reset over email, OAuth, or rate limiting (yet).
 - Live Map images are stored as base64 inside MongoDB — fine for demos, not for scale (move to S3 / Cloudinary later).
-- Groq rate‑limit handling is a simple recursive retry — no exponential backoff.
-- Community is scaffolding only; real fan rooms (rooms, messages, presence) are not implemented yet.
+- Groq rate-limit handling is a simple recursive retry — no exponential backoff.
 - No automated test suite.
+- Prompt templates use flat `{{var}}` substitution only; no loops or conditionals (numbered lists must be pre-formatted in code, as `livemap.areaSummary` does).
 
 ---
 
@@ -251,15 +380,16 @@ Get-NetTCPConnection -LocalPort 5000 | Select-Object -ExpandProperty OwningProce
 
 ### Short term
 - [ ] Object storage for Live Map images
-- [ ] Persistent fan rooms (rooms, messages, typing indicators, presence)
 - [ ] Trip sharing via public link
-- [ ] Mobile bottom‑nav layout pass
+- [ ] Mobile bottom-nav layout pass
+- [ ] Prompt diff / revision history in the admin editor
 
 ### Medium term
 - [ ] OAuth (Google) + proper signup flow
 - [ ] Saved POIs / favorites and trip versioning
 - [ ] Push notifications for nearby Live Map activity
-- [ ] Multi‑destination itineraries
+- [ ] Multi-destination itineraries
+- [ ] Per-prompt model + temperature controls in the admin editor
 
 ### Long term
 - [ ] Native mobile app (React Native) sharing the same API
@@ -269,6 +399,37 @@ Get-NetTCPConnection -LocalPort 5000 | Select-Object -ExpandProperty OwningProce
 
 ---
 
-## 11. License
+## 11. Recent Improvements
+
+### Per-day Weather Verdict on Trip Results
+The trip planner now turns the raw Open-Meteo forecast into a usable per-day verdict (`excellent` / `good` / `fair` / `poor`) and shows it on the Trip Results page:
+
+- **`backend/services/weatherService.js`** — `summarizeForecast()` and `rateDay()` map every day's WMO code, temperatures, precipitation and wind into `{ icon, label, rating, isGood, advice }`.
+- **`backend/services/plannerOrchestrator.js`** — attaches a `weatherSummary` object to every itinerary day and stores a top-level `weatherDaily[]` on the trip.
+- **`backend/services/promptService.js`** — the `itinerary.generate` prompt now receives `weatherDaily` and is instructed to pick **indoor** activities on poor/fair days and **outdoor** ones on good/excellent days; every activity gets `isIndoor: true|false`.
+- **`frontend/src/components/UI/WeatherBadge.jsx`** — a `WeatherBadge` banner above each day's timeline + a small `WeatherChip` inside each day-tab.
+
+### Sharper Flights & Hotels (single merged prompt)
+Rather than splitting into separate prompts, the existing `itinerary.generate` prompt was extended so the LLM returns:
+
+- a single, precise flight pick (`airline`, `flightClass`, `stops`, `durationHours`, `estimatedPrice`, `baggageTip`, `bookingTip`) — alternatives are intentionally **not** requested; the four provider deep-link buttons (Google / Skyscanner / Kiwi / Kayak) act as the comparison layer.
+- a primary hotel pick **and 2 alternatives** (`stars`, `pricePerNight`, `neighborhood`, `amenities[]`, `bookingTip`)
+- budget-aware pricing — the prompt receives the pre-computed `flights` / `hotels` envelopes from the style allocation
+- the orchestrator now stores the **total** hotel stay (`pricePerNight × nights`) instead of confusing per-night vs total
+
+The `Trip` model gained `hotels.options[]`, `weatherDaily[]` and `itinerary[].weatherSummary`. `FlightsSection` renders the richer primary pick only, while `HotelsSection` also renders the alternative cards.
+
+### Logical fixes in the trip pipeline
+- **Multi-day fallback** — when the LLM fails (rate-limit / no key) the orchestrator now produces one POI-rotated day for **every** date in the requested range with all 4 sessions, instead of a single day.
+- **Hotel total bug** — `trip.hotels.price` is now the realistic total stay; `pricePerNight` is preserved separately for the `BookingSection`.
+- **Single source of truth** — the `style → allocation` table is computed once and re-used by both the prompt and the saved `breakdown`.
+- **Proportional budget donut** — `BudgetRing` was rendering two hard-coded segments; it now builds 5 proportional segments (flights/hotels/food/activities/other), shows percentages in the legend, uses the trip currency in the centre, and rotates to start at 12 o'clock.
+- **Pexels resilience** — `photoService` now swallows `ENOTFOUND` / `EAI_AGAIN` / `ECONNREFUSED` errors, flips an in-memory circuit breaker for 10 minutes so trip generation no longer spams the console, and falls back to a curated deterministic image per destination. Successful lookups are cached for 24 h via `node-cache`.
+
+See `ARCH.md` for the full architecture, AI pipeline and design patterns.
+
+---
+
+## 12. License
 
 Educational / portfolio project (PFE). Not for commercial use without permission.

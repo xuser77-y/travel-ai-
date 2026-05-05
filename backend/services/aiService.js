@@ -1,4 +1,5 @@
 const Groq = require("groq-sdk");
+const promptService = require('./promptService');
 require('dotenv').config();
 
 const cleanJsonResponse = (content) => {
@@ -26,60 +27,31 @@ const generateItinerary = async (tripData) => {
   const groq = new Groq({ apiKey });
 
   try {
-    const { destination, dates, travelers, budget, style, interests, dietary, weather, pois } = tripData;
+    const { destination, startCity, dates, travelers, budget, style, interests, dietary, weather, weatherDaily, pois, nights } = tripData;
 
-    const prompt = `
-      You are a world-class travel planner. Generate a highly detailed, professional, and luxury-oriented travel itinerary.
-      
-      Destination: ${destination}
-      Dates: ${dates.start} to ${dates.end}
-      Travelers: ${travelers}
-      Style: ${style}
-      Budget: ${budget.currency} ${budget.total}
-      Interests: ${interests.join(', ')}
-      Dietary Preferences: ${dietary.join(', ')}
-      Weather Forecast: ${JSON.stringify(weather)}
-      Available POIs from Map Service: ${JSON.stringify(pois)}
+    // Build the rendering context from tripData so the prompt template can
+    // reference variables via {{dot.notation}}.
+    const context = {
+      destination,
+      startCity: startCity || '',
+      dates,
+      nights: nights || '',
+      travelers,
+      budget,
+      style,
+      interests: Array.isArray(interests) ? interests.join(', ') : interests,
+      dietary: Array.isArray(dietary) ? dietary.join(', ') : dietary,
+      weather,
+      weatherDaily,
+      pois
+    };
 
-      CRITICAL REQUIREMENTS:
-      1. ITINERARY: For EVERY day, provide 4 sessions: "Morning", "Lunch", "Afternoon", and "Evening".
-      2. REAL COORDINATES: You MUST prioritize using the "Available POIs" provided above. For any activity or restaurant you choose, you MUST provide its exact "lat" and "lon". If you suggest a place NOT in the POI list, you MUST ensure its coordinates are realistic and precise for ${destination}.
-      3. ACTIVITIES: Mix landmarks with hidden gems. Provide engaging descriptions (NO backticks or special characters inside strings).
-      3. FOOD: Every "Lunch" and "Evening" session MUST be a specific restaurant recommendation in ${destination}.
-      4. HOTEL: Provide a specific hotel recommendation that fits the profile.
-      5. COST: Every activity and meal MUST have a realistic cost estimate in ${budget.currency}.
-      6. LOGISTICS: Include a "transportSuggestion" for each day.
-
-      Return ONLY valid JSON. Ensure NO stray characters like backticks are inside values.
-      
-      HARD REQUIREMENT FOR COORDINATES:
-      - You are provided with a list of REAL POIs with verified "lat" and "lon".
-      - For at least 90% of the activities, you MUST use a POI from the "Available POIs" list.
-      - If you use a POI from the list, you MUST use its EXACT name and EXACT "lat" and "lon".
-      - If you MUST suggest a place not in the list, you are strictly forbidden from guessing its coordinates; instead, use the coordinates of the nearest major landmark from the POI list.
-      
-      Schema:
-      {
-        "summary": "string",
-        "hotel": { "name": "string", "description": "string", "stars": number, "pricePerNight": number, "address": "string" },
-        "flights": { "suggestion": "string", "estimatedPrice": number },
-        "days": [
-          {
-            "dayNumber": number,
-            "date": "YYYY-MM-DD",
-            "transportSuggestion": "string",
-            "sessions": [
-              { "time": "Morning|Lunch|Afternoon|Evening", "activity": { "name": "string", "description": "string", "cost": number, "duration": "string", "lat": number, "lon": number, "category": "string" } }
-            ]
-          }
-        ]
-      }
-    `;
+    const { system, user } = await promptService.resolveForCall('itinerary.generate', context);
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
-        { role: "system", content: "You are a travel planning assistant that outputs only strict, valid JSON. Never use backticks in strings." },
-        { role: "user", content: prompt }
+        { role: "system", content: system },
+        { role: "user", content: user }
       ],
       model: "llama-3.3-70b-versatile",
       response_format: { type: "json_object" }
@@ -104,34 +76,20 @@ const refineItinerary = async (currentTrip, userMessage) => {
   const groq = new Groq({ apiKey });
 
   try {
-    const prompt = `
-      You are a specialized Local Travel Expert for the destination: ${currentTrip.destination.name}.
-      
-      STRICT CONSTRAINTS:
-      1. GEOGRAPHY: You MUST stay within the city limits of ${currentTrip.destination.name}. Do NOT suggest activities in other cities unless the user explicitly asks for a day trip.
-      2. MAPPING: Every time you change or add an activity, you MUST provide precise and REAL "lat" and "lon" coordinates. Do NOT hallucinate coordinates; if you suggest a known landmark, use its true geographical position.
-      3. CONSISTENCY: Maintain the existing style (${currentTrip.style}) and budget (${currentTrip.budget.currency}).
-      4. OUTPUT: You must return the FULL updated trip object inside "updatedTrip".
+    const context = {
+      destination: currentTrip.destination?.name || '',
+      style: currentTrip.style || '',
+      budget: currentTrip.budget || {},
+      userMessage: userMessage || ''
+    };
 
-      USER REQUEST: "${userMessage}"
-
-      Return ONLY valid JSON in this format:
-      {
-        "aiResponse": "A friendly, expert response explaining exactly what you changed and why it's a great choice for ${currentTrip.destination.name}.",
-        "updatedTrip": { 
-          ... (the entire trip object with your modifications, ensuring all lat/lon are present and accurate)
-        }
-      }
-    `;
+    const { system, user } = await promptService.resolveForCall('itinerary.refine', context);
 
     const completion = await groq.chat.completions.create({
       messages: [
-        { 
-          role: "system", 
-          content: `You are the ${currentTrip.destination.name} Travel Expert. You have full authority to modify the itinerary, coordinates, and map markers. You are precise, luxurious in your tone, and strictly local.` 
-        },
+        { role: "system", content: system },
         { role: "user", content: `Current Itinerary JSON: ${JSON.stringify(currentTrip)}` },
-        { role: "user", content: prompt }
+        { role: "user", content: user }
       ],
       model: "llama-3.3-70b-versatile",
       response_format: { type: "json_object" }

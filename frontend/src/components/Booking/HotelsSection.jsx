@@ -13,6 +13,11 @@ const HotelsSection = ({ trip }) => {
   const estimatedPrice = trip.hotels?.price || trip.budget?.breakdown?.hotels;
   const recommendedName = trip.hotels?.name;
   const recommendedDesc = trip.hotels?.description;
+  const recommendedStars = trip.hotels?.stars;
+  const recommendedNeighborhood = trip.hotels?.neighborhood;
+  const recommendedAmenities = Array.isArray(trip.hotels?.amenities) ? trip.hotels.amenities : [];
+  const bookingTip = trip.hotels?.bookingTip;
+  const altHotels = Array.isArray(trip.hotels?.options) ? trip.hotels.options : [];
 
   // Estimate adults from travelers
   const adults = trip.travelers === 'family' ? 2 : trip.travelers === 'group' ? 4 : trip.travelers === 'couple' ? 2 : 1;
@@ -79,14 +84,58 @@ const HotelsSection = ({ trip }) => {
           <div className="rh-tag">
             <Star size={12} fill="currentColor" />
             <span>AI RECOMMENDED</span>
+            {recommendedStars > 0 && (
+              <span className="rh-stars">
+                {Array.from({ length: Math.min(5, Math.round(recommendedStars)) }).map((_, i) => (
+                  <Star key={i} size={11} fill="#eab308" stroke="#eab308" />
+                ))}
+              </span>
+            )}
           </div>
           <h4>{recommendedName}</h4>
           {recommendedDesc && <p>{recommendedDesc}</p>}
           <div className="rh-amenities">
-            <span><Wifi size={12} /> Wi-Fi</span>
-            <span><Coffee size={12} /> Breakfast</span>
-            <span><MapPin size={12} /> Central</span>
+            {recommendedNeighborhood && (
+              <span><MapPin size={12} /> {recommendedNeighborhood}</span>
+            )}
+            {(recommendedAmenities.length ? recommendedAmenities : ['Wi-Fi', 'Breakfast', 'Central']).slice(0, 6).map((a, i) => {
+              const lower = String(a).toLowerCase();
+              const Icon = lower.includes('wifi') || lower.includes('wi-fi') ? Wifi
+                : lower.includes('breakfast') || lower.includes('coffee') ? Coffee
+                : MapPin;
+              return <span key={i}><Icon size={12} /> {a}</span>;
+            })}
           </div>
+          {bookingTip && (
+            <div className="ai-suggestion" style={{ marginTop: 10 }}>
+              <span className="ai-tag">BOOKING TIP</span>
+              <p>{bookingTip}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Alternative hotel options */}
+      {altHotels.length > 0 && (
+        <div className="alt-options">
+          <h5 className="alt-title">Alternatives</h5>
+          <ul className="alt-list">
+            {altHotels.map((h, i) => (
+              <li key={i} className="alt-item">
+                <div className="alt-main">
+                  <strong>{h.name || 'Hotel'}{h.stars ? ` • ${h.stars}★` : ''}</strong>
+                  <span className="alt-meta">
+                    {h.neighborhood}
+                    {Array.isArray(h.amenities) && h.amenities.length > 0 && ` • ${h.amenities.slice(0, 3).join(' · ')}`}
+                  </span>
+                  {h.reason && <small className="alt-reason">{h.reason}</small>}
+                </div>
+                {h.pricePerNight && (
+                  <span className="alt-price">{currency} {Math.round(h.pricePerNight)}<small> /night</small></span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

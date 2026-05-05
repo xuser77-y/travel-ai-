@@ -939,3 +939,220 @@ body.light-mode .trip-summary,
 body.light-mode .trip-itinerary { background: #f8fafc; }
 body.light-mode .trip-session { background: #ffffff; }
 body.light-mode .btn-secondary { background: #ffffff; }
+
+/* =========================================================================
+   Prompts editor — password gate + per-prompt cards with textareas
+   ========================================================================= */
+.prompts-lock {
+  max-width: 520px;
+  margin: 32px auto;
+  padding: 36px 32px;
+  text-align: center;
+  background: rgba(var(--primary-rgb), 0.04);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.prompts-lock-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(var(--primary-rgb), 0.12);
+  color: var(--primary);
+}
+
+.prompts-lock h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.prompts-lock-form {
+  display: flex;
+  gap: 10px;
+  margin: 22px 0 14px;
+}
+
+.prompts-lock-form .input-group {
+  position: relative;
+  flex: 1;
+}
+
+.prompts-lock-form .input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.prompts-lock-form input {
+  width: 100%;
+  padding: 11px 14px 11px 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.prompts-lock-form input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+.prompts-lock-note {
+  font-size: 0.8rem;
+  margin-top: 8px;
+}
+
+.prompts-section .section-toolbar {
+  margin-bottom: 16px;
+}
+
+.prompt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prompt-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.prompt-card:hover { border-color: rgba(var(--primary-rgb), 0.4); }
+.prompt-card.is-open { border-color: rgba(var(--primary-rgb), 0.5); }
+
+.prompt-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.prompt-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prompt-card-title strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.prompt-card-icon { color: var(--primary); }
+
+.prompt-card-key {
+  display: block;
+  font-size: 0.75rem;
+  font-family: 'SF Mono', Menlo, monospace;
+  margin-top: 2px;
+}
+
+.prompt-card-badges { display: flex; gap: 6px; }
+
+.pill-default {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.prompt-card-body {
+  padding: 4px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.prompt-vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.prompt-vars-label {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.prompt-var {
+  padding: 3px 8px;
+  background: rgba(var(--primary-rgb), 0.08);
+  color: var(--primary-light, var(--primary));
+  border: 1px solid rgba(var(--primary-rgb), 0.2);
+  border-radius: 6px;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 0.72rem;
+}
+
+.prompt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prompt-field > span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.prompt-field textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.prompt-field textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.15);
+}
+
+.prompt-meta {
+  font-size: 0.78rem;
+  margin: 0;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+body.light-mode .prompt-card { background: #ffffff; }
+body.light-mode .prompts-lock { background: #f8fafc; }
+body.light-mode .prompt-field textarea,
+body.light-mode .prompts-lock-form input { background: #f8fafc; }
+body.light-mode .pill-default {
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
+  border-color: rgba(100, 116, 139, 0.3);
+}

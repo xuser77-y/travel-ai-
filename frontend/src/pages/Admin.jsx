@@ -4,9 +4,11 @@ import axios from 'axios';
 import {
   Shield, Users, Wifi, MapPinned, MessagesSquare, Radio, Activity, BarChart3,
   Trash2, ShieldCheck, ShieldOff, Ban, Search, RefreshCw, AlertTriangle, ArrowLeft,
-  Key, Eye, X, Pencil, Save, Calendar, Clock
+  Key, Eye, X, Pencil, Save, Calendar, Clock, BookOpen, RotateCcw, Lock, Sparkles,
+  ChevronDown, ChevronRight
 } from 'lucide-react';
 import useTripStore from '../stores/tripStore';
+import socket from '../lib/socket';
 import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Admin.css';
@@ -50,6 +52,11 @@ const Admin = () => {
   const [rooms, setRooms] = useState([]);
   const [posts, setPosts] = useState([]);
   const [apiUsage, setApiUsage] = useState(null);
+  const [prompts, setPrompts] = useState([]);
+  // Password gate for the Prompts editor: kept in memory only, cleared when
+  // the user leaves the section. Re-required on every page reload.
+  const [promptPassword, setPromptPassword] = useState('');
+  const [promptsUnlocked, setPromptsUnlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -117,6 +124,10 @@ const Admin = () => {
           const res = await axios.get(`${API}/api/admin/api-usage`, { headers });
           if (!cancelled) setApiUsage(res.data);
         }
+        if (section === 'prompts' && promptsUnlocked) {
+          const res = await axios.get(`${API}/api/admin/prompts`, { headers });
+          if (!cancelled) setPrompts(res.data.items);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err.response?.data?.error || err.message);
@@ -128,7 +139,16 @@ const Admin = () => {
     run();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, token, user?.isAdmin, userQuery, users.page, trips.page]);
+  }, [section, token, user?.isAdmin, userQuery, users.page, trips.page, promptsUnlocked]);
+
+  // Lock the Prompts editor whenever the admin navigates to a different
+  // section so the in-memory password never lingers across views.
+  useEffect(() => {
+    if (section !== 'prompts') {
+      setPromptsUnlocked(false);
+      setPromptPassword('');
+    }
+  }, [section]);
 
   // Live polling for online stats every 5 seconds while on the dashboard.
   useEffect(() => {
@@ -147,6 +167,33 @@ const Admin = () => {
     }, 5000);
     return () => clearInterval(id);
   }, [token, user?.isAdmin, headers]);
+
+  // Realtime updates for the Live Posts section: subscribe to the same socket
+  // events LiveMap uses so new posts appear immediately and deleted ones
+  // vanish without waiting for a section switch or refresh.
+  useEffect(() => {
+    if (section !== 'liveposts') return undefined;
+
+    const onNew = (post) => {
+      if (!post?._id) return;
+      setPosts((prev) => {
+        // Drop any optimistic duplicate first, then prepend.
+        const without = prev.filter((p) => String(p._id) !== String(post._id));
+        return [post, ...without];
+      });
+    };
+    const onDelete = ({ _id } = {}) => {
+      if (!_id) return;
+      setPosts((prev) => prev.filter((p) => String(p._id) !== String(_id)));
+    };
+
+    socket.on('livemap:new_post', onNew);
+    socket.on('livemap:delete_post', onDelete);
+    return () => {
+      socket.off('livemap:new_post', onNew);
+      socket.off('livemap:delete_post', onDelete);
+    };
+  }, [section]);
 
   // ---- mutations -------------------------------------------------------
   const refreshUsers = async () => {
@@ -279,6 +326,84 @@ const Admin = () => {
     setApiUsage(res.data);
   };
 
+  // ---- prompts ---------------------------------------------------------
+  // Unlock the Prompts editor by re-verifying the admin's password. We keep
+  // the password in component state for the rest of the session so each
+  // save/reset doesn't require typing it again.
+  const unlockPrompts = async (password) => {
+    try {
+      await axios.post(`${API}/api/admin/verify-password`, { password }, { headers });
+      setPromptPassword(password);
+      setPromptsUnlocked(true);
+      toast.success('Prompts editor unlocked.');
+      return true;
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Could not verify password.');
+      return false;
+    }
+  };
+
+  const savePrompt = async (key, { systemPrompt, userTemplate }) => {
+    if (!promptPassword) {
+      toast.error('Session expired. Please unlock again.');
+      setPromptsUnlocked(false);
+      return null;
+    }
+    try {
+      const res = await axios.patch(
+        `${API}/api/admin/prompts/${encodeURIComponent(key)}`,
+        { systemPrompt, userTemplate, password: promptPassword },
+        { headers }
+      );
+      setPrompts((prev) => prev.map((p) => (p.key === key ? res.data : p)));
+      toast.success(`Saved “${res.data.title}”.`);
+      return res.data;
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message;
+      // 401 means the cached password no longer matches (e.g. user changed
+      // it from another tab). Force a re-unlock.
+      if (err.response?.status === 401) {
+        setPromptsUnlocked(false);
+        setPromptPassword('');
+      }
+      toast.error(msg);
+      return null;
+    }
+  };
+
+  const resetPrompt = async (key) => {
+    if (!promptPassword) {
+      toast.error('Session expired. Please unlock again.');
+      setPromptsUnlocked(false);
+      return null;
+    }
+    const target = prompts.find((p) => p.key === key);
+    const ok = await confirm({
+      title: `Reset “${target?.title || key}”?`,
+      message: 'The prompt will revert to the built-in default. Any custom wording will be lost.',
+      confirmLabel: 'Reset to default',
+      variant: 'danger'
+    });
+    if (!ok) return null;
+    try {
+      const res = await axios.post(
+        `${API}/api/admin/prompts/${encodeURIComponent(key)}/reset`,
+        { password: promptPassword },
+        { headers }
+      );
+      setPrompts((prev) => prev.map((p) => (p.key === key ? res.data : p)));
+      toast.success(`Reset “${res.data.title}” to default.`);
+      return res.data;
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setPromptsUnlocked(false);
+        setPromptPassword('');
+      }
+      toast.error(err.response?.data?.error || err.message);
+      return null;
+    }
+  };
+
   const resetApiUsage = async () => {
     const ok = await confirm({
       title: 'Reset API usage counters?',
@@ -327,7 +452,8 @@ const Admin = () => {
     { id: 'trips', label: 'Trips', icon: MapPinned },
     { id: 'rooms', label: 'Hubs', icon: MessagesSquare },
     { id: 'liveposts', label: 'Live Posts', icon: Radio },
-    { id: 'apiusage', label: 'API Usage', icon: BarChart3 }
+    { id: 'apiusage', label: 'API Usage', icon: BarChart3 },
+    { id: 'prompts', label: 'AI Prompts', icon: BookOpen }
   ];
 
   return (
@@ -413,7 +539,18 @@ const Admin = () => {
           )}
 
           {section === 'liveposts' && (
-            <LivePostsSection posts={posts} onDelete={deletePost} />
+            <LivePostsSection
+              posts={posts}
+              onDelete={deletePost}
+              onRefresh={async () => {
+                try {
+                  const res = await axios.get(`${API}/api/admin/liveposts`, { headers });
+                  setPosts(res.data.items);
+                } catch (err) {
+                  toast.error(err.response?.data?.error || err.message);
+                }
+              }}
+            />
           )}
 
           {section === 'apiusage' && (
@@ -421,6 +558,20 @@ const Admin = () => {
               data={apiUsage}
               onRefresh={refreshApiUsage}
               onReset={resetApiUsage}
+            />
+          )}
+
+          {section === 'prompts' && (
+            <PromptsSection
+              prompts={prompts}
+              unlocked={promptsUnlocked}
+              onUnlock={unlockPrompts}
+              onSave={savePrompt}
+              onReset={resetPrompt}
+              onLock={() => {
+                setPromptsUnlocked(false);
+                setPromptPassword('');
+              }}
             />
           )}
         </main>
@@ -749,10 +900,15 @@ const RoomsSection = ({ rooms, onDelete, onOpenMessages }) => (
   </section>
 );
 
-const LivePostsSection = ({ posts, onDelete }) => (
+const LivePostsSection = ({ posts, onDelete, onRefresh }) => (
   <section className="admin-section">
     <div className="section-toolbar">
-      <span className="muted">{posts.length} posts</span>
+      <span className="muted">{posts.length} posts · live updates</span>
+      {onRefresh && (
+        <button type="button" className="btn-secondary" onClick={onRefresh}>
+          <RefreshCw size={14} /> Refresh
+        </button>
+      )}
     </div>
     <div className="post-grid">
       {posts.map((p) => (
@@ -1251,6 +1407,210 @@ const ApiUsageSection = ({ data, onRefresh, onReset }) => {
             )}
           </tbody>
         </table>
+      </div>
+    </section>
+  );
+};
+
+// =========================================================================
+// Prompts section — password-gated AI prompt editor
+// =========================================================================
+
+const PromptsLockScreen = ({ onUnlock }) => {
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!password || busy) return;
+    setBusy(true);
+    const ok = await onUnlock(password);
+    setBusy(false);
+    if (ok) setPassword('');
+  };
+
+  return (
+    <section className="admin-section">
+      <div className="prompts-lock">
+        <div className="prompts-lock-icon"><Lock size={28} /></div>
+        <h2>Prompts editor is locked</h2>
+        <p className="muted">
+          Editing AI prompts changes how the planner, refinement chat and live-map
+          summaries behave for everyone. Re-enter your admin password to unlock
+          this section for the rest of the session.
+        </p>
+        <form onSubmit={submit} className="prompts-lock-form">
+          <div className="input-group">
+            <Key size={16} className="input-icon" />
+            <input
+              type="password"
+              placeholder="Your admin password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              autoFocus
+              disabled={busy}
+            />
+          </div>
+          <button type="submit" className="btn-primary" disabled={busy || !password}>
+            {busy ? 'Verifying…' : 'Unlock'}
+          </button>
+        </form>
+        <p className="muted prompts-lock-note">
+          The password is verified on the server, kept only in memory, and
+          cleared as soon as you leave this section.
+        </p>
+      </div>
+    </section>
+  );
+};
+
+const PromptCard = ({ prompt, onSave, onReset }) => {
+  const [open, setOpen] = useState(false);
+  const [system, setSystem] = useState(prompt.systemPrompt);
+  const [template, setTemplate] = useState(prompt.userTemplate);
+  const [busy, setBusy] = useState(false);
+
+  // Re-sync editor state when the upstream prompt changes (e.g. after save
+  // or reset elsewhere). Without this, a Reset would visually look unchanged.
+  useEffect(() => {
+    setSystem(prompt.systemPrompt);
+    setTemplate(prompt.userTemplate);
+  }, [prompt.systemPrompt, prompt.userTemplate]);
+
+  const dirty =
+    system !== prompt.systemPrompt || template !== prompt.userTemplate;
+
+  const handleSave = async () => {
+    setBusy(true);
+    await onSave(prompt.key, { systemPrompt: system, userTemplate: template });
+    setBusy(false);
+  };
+
+  const handleReset = async () => {
+    setBusy(true);
+    await onReset(prompt.key);
+    setBusy(false);
+  };
+
+  const handleRevert = () => {
+    setSystem(prompt.systemPrompt);
+    setTemplate(prompt.userTemplate);
+  };
+
+  return (
+    <article className={`prompt-card ${open ? 'is-open' : ''}`}>
+      <header className="prompt-card-head" onClick={() => setOpen((v) => !v)}>
+        <div className="prompt-card-title">
+          {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          <Sparkles size={16} className="prompt-card-icon" />
+          <div>
+            <strong>{prompt.title}</strong>
+            <span className="muted prompt-card-key">{prompt.key}</span>
+          </div>
+        </div>
+        <div className="prompt-card-badges">
+          {prompt.isOverridden ? (
+            <span className="pill pill-warn">Customized</span>
+          ) : (
+            <span className="pill pill-default">Default</span>
+          )}
+        </div>
+      </header>
+
+      {open && (
+        <div className="prompt-card-body">
+          <p className="muted">{prompt.description}</p>
+
+          {prompt.variables?.length > 0 && (
+            <div className="prompt-vars">
+              <span className="prompt-vars-label">Available variables:</span>
+              {prompt.variables.map((v) => (
+                <code key={v} className="prompt-var">{`{{${v}}}`}</code>
+              ))}
+            </div>
+          )}
+
+          <label className="prompt-field">
+            <span>System prompt</span>
+            <textarea
+              value={system}
+              onChange={(e) => setSystem(e.target.value)}
+              rows={3}
+              spellCheck="false"
+              disabled={busy}
+            />
+          </label>
+
+          <label className="prompt-field">
+            <span>User prompt template</span>
+            <textarea
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+              rows={14}
+              spellCheck="false"
+              disabled={busy}
+            />
+          </label>
+
+          {prompt.updatedAt && (
+            <p className="muted prompt-meta">
+              Last edited {fmtRelative(prompt.updatedAt)}
+              {prompt.updatedBy?.email ? ` by ${prompt.updatedBy.email}` : ''}.
+            </p>
+          )}
+
+          <div className="prompt-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleRevert}
+              disabled={!dirty || busy}
+              title="Discard unsaved edits"
+            >
+              <X size={14} /> Discard changes
+            </button>
+            <button
+              type="button"
+              className="btn-secondary danger"
+              onClick={handleReset}
+              disabled={!prompt.isOverridden || busy}
+              title="Restore the built-in default"
+            >
+              <RotateCcw size={14} /> Reset to default
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleSave}
+              disabled={!dirty || busy}
+            >
+              <Save size={14} /> {busy ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </div>
+      )}
+    </article>
+  );
+};
+
+const PromptsSection = ({ prompts, unlocked, onUnlock, onSave, onReset, onLock }) => {
+  if (!unlocked) return <PromptsLockScreen onUnlock={onUnlock} />;
+  return (
+    <section className="admin-section prompts-section">
+      <div className="section-toolbar">
+        <span className="muted">
+          {prompts.length} prompt{prompts.length === 1 ? '' : 's'} · changes apply on the next AI call
+        </span>
+        <button type="button" className="btn-secondary" onClick={onLock}>
+          <Lock size={14} /> Lock editor
+        </button>
+      </div>
+      <div className="prompt-list">
+        {prompts.map((p) => (
+          <PromptCard key={p.key} prompt={p} onSave={onSave} onReset={onReset} />
+        ))}
+        {prompts.length === 0 && <p className="muted">No prompts registered.</p>}
       </div>
     </section>
   );

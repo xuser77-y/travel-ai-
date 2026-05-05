@@ -5,6 +5,7 @@ import MapView from '../components/Map/MapView';
 import BudgetRing from '../components/Budget/BudgetRing';
 import FlightsSection from '../components/Booking/FlightsSection';
 import HotelsSection from '../components/Booking/HotelsSection';
+import WeatherBadge, { WeatherChip } from '../components/UI/WeatherBadge';
 import { Calendar, MapPin, Users, Info, MessageCircle, Send, X, Sparkles, Clock, DollarSign } from 'lucide-react';
 import axios from 'axios';
 import './TripResults.css';
@@ -126,7 +127,7 @@ const TripResults = () => {
 
         <div className="budget-section">
           <h3>Budget Analysis</h3>
-          <BudgetRing breakdown={trip.budget.breakdown} />
+          <BudgetRing breakdown={trip.budget.breakdown} currency={trip.budget.currency} />
         </div>
 
         {trip.chatRoom ? (
@@ -234,12 +235,14 @@ const TripResults = () => {
                     {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 )}
+                <WeatherChip summary={day.weatherSummary || trip.weatherDaily?.[idx]} />
               </button>
             ))}
           </div>
         </header>
 
         <section className="itinerary-timeline">
+          <WeatherBadge summary={trip.itinerary[activeDay]?.weatherSummary || trip.weatherDaily?.[activeDay]} />
           {trip.itinerary[activeDay]?.transportSuggestion && (
             <div className="transport-hint">
               🚗 Suggested transport: {trip.itinerary[activeDay].transportSuggestion}

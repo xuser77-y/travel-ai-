@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
+const Groq = require('groq-sdk');
 const { generateFullTrip } = require('../services/plannerOrchestrator');
+const promptService = require('../services/promptService');
 const Trip = require('../models/Trip');
 
 // Optional auth: sets req.user if a valid token is present, otherwise continues
@@ -101,6 +104,96 @@ router.post('/refine', async (req, res) => {
     
     res.json(result);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/trips/suggest-destination
+// Powers Step 1's "Let AI choose for me" mode: takes a free-form description
+// and returns a real, geocoded city the user can actually plan a trip to.
+router.post('/suggest-destination', async (req, res) => {
+  try {
+    const description = (req.body?.description || '').trim();
+    if (description.length < 5) {
+      return res.status(400).json({ error: 'Please describe your dream trip in a sentence or two.' });
+    }
+
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: 'AI service is not configured.' });
+
+    // 1. Ask the LLM for a single city pick.
+    const groq = new Groq({ apiKey });
+    const { system, user } = await promptService.resolveForCall('destination.suggest', { description });
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' },
+      temperature: 0.7
+    });
+
+    let suggestion;
+    try {
+      suggestion = JSON.parse(completion.choices[0].message.content);
+    } catch (_) {
+      return res.status(502).json({ error: 'AI returned an unreadable response. Try rephrasing.' });
+    }
+    const city = (suggestion?.city || '').trim();
+    const country = (suggestion?.country || '').trim();
+    const reason = (suggestion?.reason || '').trim();
+    if (!city) {
+      return res.status(502).json({ error: 'AI could not pick a city. Try a more specific description.' });
+    }
+
+    // 2. Resolve coordinates through the existing search proxy so we get the
+    //    same Photon → Nominatim ranking the manual flow uses.
+    const port = process.env.PORT || 5000;
+    const query = country ? `${city}, ${country}` : city;
+    let geo = [];
+    try {
+      const r = await axios.get(`http://localhost:${port}/api/search/proxy`, {
+        params: { q: query },
+        timeout: 8000
+      });
+      geo = Array.isArray(r.data) ? r.data : [];
+    } catch (err) {
+      console.warn('suggest-destination geocode error:', err.message);
+    }
+
+    // Fall back to a plain city query if the "City, Country" form found nothing.
+    if (geo.length === 0 && country) {
+      try {
+        const r = await axios.get(`http://localhost:${port}/api/search/proxy`, {
+          params: { q: city },
+          timeout: 8000
+        });
+        geo = Array.isArray(r.data) ? r.data : [];
+      } catch (_) { /* ignore */ }
+    }
+
+    if (geo.length === 0) {
+      return res.status(502).json({
+        error: `Couldn't geocode "${query}". Try rephrasing your description.`,
+        suggestion: { city, country, reason }
+      });
+    }
+
+    const top = geo[0];
+    res.json({
+      destination: {
+        name: top.display_name,
+        city: top.city || city,
+        country: top.country || country,
+        country_code: top.country_code || null,
+        lat: parseFloat(top.lat),
+        lon: parseFloat(top.lon)
+      },
+      reason
+    });
+  } catch (error) {
+    console.error('suggest-destination error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

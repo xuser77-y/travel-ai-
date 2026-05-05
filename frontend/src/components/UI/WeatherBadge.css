@@ -1,0 +1,75 @@
+/* Weather badge — used in TripResults to surface per-day forecast verdict. */
+
+.weather-badge {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  margin-bottom: 16px;
+}
+
+.weather-badge.rating-excellent { background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04)); border-color: rgba(34,197,94,0.35); }
+.weather-badge.rating-good      { background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.04)); border-color: rgba(59,130,246,0.30); }
+.weather-badge.rating-fair      { background: linear-gradient(135deg, rgba(234,179,8,0.10),  rgba(234,179,8,0.04));  border-color: rgba(234,179,8,0.30); }
+.weather-badge.rating-poor      { background: linear-gradient(135deg, rgba(239,68,68,0.12),  rgba(239,68,68,0.04));  border-color: rgba(239,68,68,0.35); }
+
+.wb-icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+
+.wb-body { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.wb-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.wb-label { font-size: 0.95rem; }
+.wb-temps { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+.wb-precip { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+
+.wb-rating {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.wb-rating.rating-excellent { background: rgba(34,197,94,0.18);  color: #16a34a; }
+.wb-rating.rating-good      { background: rgba(59,130,246,0.18); color: #2563eb; }
+.wb-rating.rating-fair      { background: rgba(234,179,8,0.18);  color: #b45309; }
+.wb-rating.rating-poor      { background: rgba(239,68,68,0.18);  color: #dc2626; }
+
+.wb-advice {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* Compact chip used inside the day-tab list */
+.weather-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  margin-top: 4px;
+}
+.weather-chip .wc-icon { font-size: 0.9rem; line-height: 1; }
+.weather-chip.rating-excellent { border-color: rgba(34,197,94,0.45);  color: #16a34a; }
+.weather-chip.rating-good      { border-color: rgba(59,130,246,0.40); color: #2563eb; }
+.weather-chip.rating-fair      { border-color: rgba(234,179,8,0.45);  color: #b45309; }
+.weather-chip.rating-poor      { border-color: rgba(239,68,68,0.45);  color: #dc2626; }

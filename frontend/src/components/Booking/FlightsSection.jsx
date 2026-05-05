@@ -78,10 +78,34 @@ const FlightsSection = ({ trip }) => {
         </div>
       </div>
 
-      {suggestion && (
-        <div className="ai-suggestion">
-          <span className="ai-tag">AI Tip</span>
-          <p>{suggestion}</p>
+      {/* Primary AI flight pick */}
+      {(suggestion || trip.flights?.airline) && (
+        <div className="recommended-hotel">
+          <div className="rh-tag">
+            <Plane size={12} fill="currentColor" />
+            <span>AI RECOMMENDED</span>
+          </div>
+          {trip.flights?.airline && (
+            <h4>{trip.flights.airline}{trip.flights.flightClass ? ` — ${trip.flights.flightClass}` : ''}</h4>
+          )}
+          {suggestion && <p>{suggestion}</p>}
+          <div className="rh-amenities">
+            {typeof trip.flights?.stops === 'number' && (
+              <span><ArrowRight size={12} /> {trip.flights.stops === 0 ? 'Direct' : `${trip.flights.stops} stop${trip.flights.stops > 1 ? 's' : ''}`}</span>
+            )}
+            {trip.flights?.durationHours && (
+              <span><Clock size={12} /> {trip.flights.durationHours}h</span>
+            )}
+            {trip.flights?.baggageTip && (
+              <span title={trip.flights.baggageTip}><DollarSign size={12} /> {trip.flights.baggageTip}</span>
+            )}
+          </div>
+          {trip.flights?.bookingTip && (
+            <div className="ai-suggestion" style={{ marginTop: 10 }}>
+              <span className="ai-tag">BOOKING TIP</span>
+              <p>{trip.flights.bookingTip}</p>
+            </div>
+          )}
         </div>
       )}
 
