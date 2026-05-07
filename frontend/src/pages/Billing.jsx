@@ -307,25 +307,6 @@ const Billing = () => {
         </div>
       )}
 
-      <div className="sandbox-note">
-        {provider === 'stripe' ? <CreditCard size={14} /> : <FileText size={14} />}
-        <span>
-          {provider === 'stripe' ? (
-            <>
-              <strong>Stripe test mode</strong> — you'll be redirected to
-              Stripe's hosted checkout. Use the test card{' '}
-              <code>4242 4242 4242 4242</code>, any future expiry, any CVC.
-              No real money is charged.
-            </>
-          ) : (
-            <>
-              <strong>Sandbox mode</strong> — no real charge is made. Clicking
-              “Buy” simulates a successful payment, activates the plan for 30
-              days, and lets you download a PDF receipt.
-            </>
-          )}
-        </span>
-      </div>
 
       {user?.subscription?.history?.length > 0 && (
         <section className="history-section">

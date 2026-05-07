@@ -62,7 +62,7 @@ const initializeGlobalHubs = async () => {
       {
         roomName: 'General Travel Hub',
         destination: 'Worldwide',
-        description: 'The home base for every TravelAI member. Share trips, ask questions, meet other travelers.',
+        description: 'The home base for every Travio member. Share trips, ask questions, meet other travelers.',
         inviteCode: 'GLOBAL',
         isGlobalDefault: true,
         isWorldCupFanRoom: false
@@ -222,7 +222,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/settings', settingsRoutes);
 
 app.get('/', (req, res) => {
-  res.send('TravelAI Backend API is running');
+  res.send('Travio Backend API is running');
 });
 
 // MongoDB Connection

@@ -101,7 +101,7 @@ const Login = () => {
       <div className="auth-container glass-card">
         <div className="auth-header">
           <Globe className="auth-logo" size={40} />
-          <h2>{isLogin ? 'Welcome Back' : 'Join TravelAI'}</h2>
+          <h2>{isLogin ? 'Welcome Back' : 'Join Travio'}</h2>
           <p>
             {isLogin
               ? 'Enter your details to access your trips'

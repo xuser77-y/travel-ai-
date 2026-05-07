@@ -20,7 +20,7 @@ const TripResults = () => {
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'bot', text: `Hello! I'm your TravelAI assistant. How can I help you with your trip to ${currentTrip?.destination?.name || 'this destination'}?` }
+    { role: 'bot', text: `Hello! I'm your Travio assistant. How can I help you with your trip to ${currentTrip?.destination?.name || 'this destination'}?` }
   ]);
 
   // If we arrived from the Dashboard (deep link with :id) and the store

@@ -106,7 +106,7 @@ async function fetchNominatim(q) {
       limit: 12,
       'accept-language': 'en'
     },
-    headers: { 'User-Agent': 'TravelAI-PFE-Premium/1.5 (contact@travelai.example)' },
+    headers: { 'User-Agent': 'Travio-PFE-Premium/1.5 (contact@travio.example)' },
     timeout: 5000
   });
   return (data || [])

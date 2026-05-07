@@ -6,7 +6,7 @@ export const DESTINATIONS = [
     country: 'Morocco',
     tagline: 'The Red City',
     description: 'Where time slows in the medina',
-    image: 'https://images.pexels.com/photos/3889874/pexels-photo-3889874.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    image: '/assets/stadiums/marakech.jfif',
     color: '#ea580c',
     coords: [31.6295, -7.9811]
   },
@@ -36,7 +36,7 @@ export const DESTINATIONS = [
     country: 'Greece',
     tagline: 'Aegean Pearl',
     description: 'White cliffs, infinite blue',
-    image: 'https://images.pexels.com/photos/161901/santorini-oia-greece-water-161901.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    image: '/assets/stadiums/Santorini.jpg',
     color: '#3b82f6',
     coords: [36.3932, 25.4615]
   },

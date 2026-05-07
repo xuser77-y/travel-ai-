@@ -1,7 +1,7 @@
-# 🌍 TravelAI: The Future of Premium Travel Planning
+# 🌍 Travio: The Future of Premium Travel Planning
 
 ## 🚀 Project Vision
-**TravelAI** is a state-of-the-art, AI-first travel orchestration platform designed for the luxury and high-intent travel market. Unlike traditional booking sites, TravelAI focuses on **hyper-personalization** and **real-time contextual intelligence**. Our flagship 2030 World Cup Hub demonstrates our ability to merge major global events with seamless travel logistics.
+**Travio** is a state-of-the-art, AI-first travel orchestration platform designed for the luxury and high-intent travel market. Unlike traditional booking sites, Travio focuses on **hyper-personalization** and **real-time contextual intelligence**. Our flagship 2030 World Cup Hub demonstrates our ability to merge major global events with seamless travel logistics.
 
 ---
 
@@ -34,7 +34,7 @@ We leverage a sophisticated mesh of free and premium services:
 ---
 
 ## 🔮 Future Roadmap: Proposed Features
-To elevate TravelAI to a world-leading platform, we propose adding:
+To elevate Travio to a world-leading platform, we propose adding:
 
 ### 1. **AI Concierge Chatbot**
 - A persistent sidebar where users can ask, "Where is the nearest Halal restaurant to the Casablanca stadium?" or "Translate 'I need a taxi' to Darija."

@@ -21,6 +21,7 @@ import { ToastProvider } from './components/UI/Toast';
 import { ConfirmProvider } from './components/UI/ConfirmDialog';
 import FreemiumGate from './components/Billing/FreemiumGate';
 import ScrollToTop from './components/UI/ScrollToTop';
+import Footer from './components/UI/Footer';
 import './App.css';
 
 import useTripStore from './stores/tripStore';
@@ -120,6 +121,7 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>
+            <Footer />
           </div>
         </Router>
       </ConfirmProvider>

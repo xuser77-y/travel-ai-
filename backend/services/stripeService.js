@@ -72,7 +72,7 @@ const createCheckoutSession = async ({ plan, amount, currency, userId, email, su
     'line_items[0][price_data][currency]': String(currency || 'USD').toLowerCase(),
     'line_items[0][price_data][unit_amount]': minorAmount,
     'line_items[0][price_data][product_data][name]': `${planName || plan} plan — 1 month`,
-    'line_items[0][price_data][product_data][description]': 'TravelAI subscription (sandbox / test mode)',
+    'line_items[0][price_data][product_data][description]': 'Travio subscription',
     // metadata is round-tripped on the session retrieve call so we can
     // trust the planId on the success-page handler instead of the URL.
     'metadata[plan]': plan,

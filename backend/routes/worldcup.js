@@ -23,7 +23,8 @@ const CITIES = [
     architect: 'Populous + Oualalou + Choi',
     status: 'New Build (In Progress)',
     features: ['World\'s Largest Football Stadium', 'Moroccan Tent Inspired Design', 'Retractable Roof'],
-    photoUrl: '/assets/stadiums/stade_casablanca_2030_1777279994901.png'
+    photoUrl: '/assets/stadiums/casablanca_stadium.png',
+    description: 'Set to become the largest football stadium in the world, the Grand Stade de Casablanca is inspired by the traditional Moroccan tent. It will serve as the crown jewel of the 2030 World Cup, hosting the tournament\'s final match.'
   },
   { 
     name: 'Tangier', 
@@ -34,7 +35,8 @@ const CITIES = [
     architect: 'L’Atelier d’Architecture Y.M.',
     status: 'Expansion & Renovation',
     features: ['Panoramic Coastal Views', 'Olympic Grade Track', 'High-Tech Digital Skin'],
-    photoUrl: '/assets/stadiums/stade_tangier_2030_1777280029831.png'
+    photoUrl: '/assets/stadiums/tangier_stadium.jpg',
+    description: 'Located at the gateway between Africa and Europe, this coastal stadium offers breathtaking views of the Atlantic. The renovation includes a modern digital skin and expanded capacity for major international matches.'
   },
   { 
     name: 'Rabat', 
@@ -45,7 +47,8 @@ const CITIES = [
     architect: 'AIA Life Designers',
     status: 'Major Renovation',
     features: ['Solar Panel Energy Hub', 'Integrated Fan Zone', 'Modern VIP Suites'],
-    photoUrl: '/assets/stadiums/stade_rabat_2030_1777280069519.png'
+    photoUrl: '/assets/stadiums/rabat_stadium.jpg',
+    description: 'A masterpiece of sustainable architecture, the Prince Moulay Abdellah Stadium in Rabat features a massive solar panel array that powers the entire complex. It is the heart of Morocco\'s sporting infrastructure.'
   },
   { 
     name: 'Agadir', 
@@ -56,7 +59,8 @@ const CITIES = [
     architect: 'Vittorio Gregotti',
     status: 'Renovation',
     features: ['Earthquake-Resistant Structure', 'Atlas Mountains Backdrop', 'Sustainable Water Recycling'],
-    photoUrl: 'https://images.pexels.com/photos/258154/pexels-photo-258154.jpeg'
+    photoUrl: '/assets/stadiums/adrar_stadium.jpg',
+    description: 'Nestled between the Atlas Mountains and the Atlantic, Adrar Stadium is famous for its earthquake-resistant design. The renovation focuses on sustainability and fan experience with a stunning natural backdrop.'
   },
   { 
     name: 'Marrakech', 
@@ -67,7 +71,8 @@ const CITIES = [
     architect: 'Sua Kay Architects',
     status: 'Renovation',
     features: ['Iconic Red Wall Design', 'Ventilated Cooling System', 'Cultural Museum On-site'],
-    photoUrl: 'https://images.pexels.com/photos/1841819/pexels-photo-1841819.jpeg'
+    photoUrl: '/assets/stadiums/marrakech_stadium.jfif',
+    description: 'Echoing the architecture of the "Red City," Marrakech Stadium features a unique rectangular design with ventilated walls to ensure natural cooling. It includes an on-site museum celebrating Moroccan football heritage.'
   },
   { 
     name: 'Fez', 
@@ -78,7 +83,8 @@ const CITIES = [
     architect: 'IDOM',
     status: 'Modernization',
     features: ['Traditional Tile Accents', 'Digital Fan Engagement Hub', 'Expanded Media Wing'],
-    photoUrl: 'https://images.pexels.com/photos/2387418/pexels-photo-2387418.jpeg'
+    photoUrl: '/assets/stadiums/fez_stadium.avif',
+    description: 'The Fez Stadium modernization project blends the city\'s centuries-old traditional craftsmanship with cutting-edge technology. It features intricate Zellij tile patterns and high-speed fan connectivity.'
   }
 ];
 
@@ -87,12 +93,10 @@ router.get('/cities', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const data = await Promise.all(CITIES.map(async (city) => {
       const weather = await getForecast(city.lat, city.lon, today, today);
-      const cityPhoto = await getDestinationPhoto(city.name);
       return {
         ...city,
         temp: weather ? weather.temperature_2m_max[0] : null,
-        weatherCode: weather ? weather.weathercode[0] : null,
-        cityPhoto // Real city photo from Pexels
+        weatherCode: weather ? weather.weathercode[0] : null
       };
     }));
     res.json(data);

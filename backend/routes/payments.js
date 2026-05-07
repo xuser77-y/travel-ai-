@@ -165,10 +165,10 @@ router.get('/receipt/:historyId', requireAuth, (req, res) => {
       email: req.user.email
     },
     seller: {
-      name: 'TravelAI',
-      legal: 'TravelAI — PFE Project',
+      name: 'Travio',
+      legal: 'Travio — PFE Project',
       address: 'Casablanca, Morocco',
-      contact: 'support@travelai.local'
+      contact: 'support@travio.local'
     }
   });
 });

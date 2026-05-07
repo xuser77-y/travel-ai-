@@ -38,14 +38,17 @@
   color: var(--text);
   letter-spacing: -0.02em;
   flex-shrink: 0;
+  margin-left: 12px;
 }
 
-.logo-icon {
-  color: var(--primary);
-  animation: rotate 14s linear infinite;
+.logo-img {
+  transition: transform 0.3s ease;
+  filter: drop-shadow(0 0 8px rgba(var(--primary-rgb), 0.2));
 }
 
-.nav-logo span span { color: var(--accent); }
+.nav-logo:hover .logo-img {
+  transform: scale(1.05);
+}
 
 .nav-links {
   display: flex;

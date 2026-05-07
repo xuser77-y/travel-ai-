@@ -1,4 +1,4 @@
-# TravelAI — Architecture, AI Pipeline & Design Patterns
+# Travio — Architecture, AI Pipeline & Design Patterns
 
 > Companion document to `README.md`. This file zooms in on **how** the platform is built rather than **what** it does. It is meant for new contributors, jury reviewers and future maintainers.
 
@@ -35,7 +35,7 @@
                ▼                     ▼
        ┌──────────────┐      ┌────────────────────────────┐
        │   MongoDB    │      │  External APIs             │
-       │ travelai DB  │      │  Groq LLM, Open-Meteo,     │
+       │   travio DB  │      │  Groq LLM, Open-Meteo,     │
        └──────────────┘      │  Photon, Nominatim, Pexels,│
                              │  Overpass                  │
                              └────────────────────────────┘

@@ -16,7 +16,7 @@ const getActivities = async (lat, lon, interests) => {
     const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
     
     const response = await axios.get(url, {
-      headers: { 'User-Agent': 'TravelAI/1.1 (contact@travelai.com)' }
+      headers: { 'User-Agent': 'Travio/1.1 (contact@travio.com)' }
     });
     
     const pois = response.data.elements.map(el => ({

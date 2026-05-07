@@ -252,8 +252,8 @@ const buildReceiptHtml = ({ receipt, buyer, seller }) => {
 
     <footer class="bottom">
       ${receipt.provider === 'mock'
-        ? '<strong>This is a sandbox / developer receipt.</strong> No real payment was processed. Generated automatically for testing the TravelAI subscription flow.'
-        : 'Thank you for subscribing to TravelAI.'}
+        ? '<strong>This is a sandbox / developer receipt.</strong> No real payment was processed. Generated automatically for testing the Travio subscription flow.'
+        : 'Thank you for subscribing to Travio.'}
       ${receipt.note ? `<br/>${escapeHtml(receipt.note)}` : ''}
     </footer>
 

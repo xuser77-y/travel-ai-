@@ -58,7 +58,7 @@ const IntroExperience = ({ onComplete }) => {
           transition={{ duration: 0.8 }}
         >
           <span className="brand-dot" />
-          <span>TRAVEL · AI</span>
+          <span>TRAVIO</span>
         </motion.div>
 
         {/* Postcard Stage */}

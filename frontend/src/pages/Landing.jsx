@@ -139,9 +139,9 @@ const Landing = () => {
           </div>
           <div className="wc-showcase-visual">
             <div className="stacked-cards">
-              <div className="s-card card-1"><img src="https://images.pexels.com/photos/1013488/pexels-photo-1013488.jpeg" alt="Stadium" loading="lazy" /></div>
+              <div className="s-card card-1"><img src="/assets/stadiums/2030.png" alt="Stadium" loading="lazy" /></div>
               <div className="s-card card-2"><img src="https://images.pexels.com/photos/46798/the-ball-stadion-football-the-pitch-46798.jpeg" alt="Football" loading="lazy" /></div>
-              <div className="s-card card-3"><img src="https://images.pexels.com/photos/1618269/pexels-photo-1618269.jpeg" alt="Morocco" loading="lazy" /></div>
+              <div className="s-card card-3"><img src="/assets/stadiums/morrocco.jpg" alt="Morocco" loading="lazy" /></div>
             </div>
           </div>
         </motion.div>
@@ -178,7 +178,7 @@ const Landing = () => {
         <motion.h2 className="section-title" {...fadeUp}>Traveler stories</motion.h2>
         <div className="testimonials-grid">
           {[
-            { name: 'Mark Thompson', loc: 'London, UK', text: "TravelAI predicted the traffic surge in Casablanca and re-routed my shuttle 30 mins before the match. I didn't miss a second.", rating: 5 },
+            { name: 'Mark Thompson', loc: 'London, UK', text: "Travio predicted the traffic surge in Casablanca and re-routed my shuttle 30 mins before the match. I didn't miss a second.", rating: 5 },
             { name: 'Elena Rodriguez', loc: 'Madrid, Spain', text: 'The budget optimizer saved me $400 on my flight from Madrid to Marrakech by finding a route I never knew existed.', rating: 5 },
             { name: 'Joao Silva', loc: 'Lisbon, Portugal', text: 'Navigating through Portugal was effortless. AI-integrated rail passes were always one step ahead of my schedule.', rating: 5 }
           ].map((s, i) => (
@@ -204,46 +204,6 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="footer-v3">
-        <div className="footer-content">
-          <div className="footer-main">
-            <div className="logo">
-              <GlobeIcon size={32} color="var(--primary)" />
-              <span>Travel<span>AI</span></span>
-            </div>
-            <p>Your intelligent companion for large-scale adventures and the historic 2030 World Cup.</p>
-            <div className="footer-social">
-              <GlobeIcon size={20} />
-              <Share2 size={20} />
-              <Users size={20} />
-            </div>
-          </div>
-          <div className="footer-links">
-            <div className="link-col">
-              <h4>PRODUCT</h4>
-              <a href="#">Planner</a>
-              <a href="#">Explore</a>
-              <a href="#">Pricing</a>
-            </div>
-            <div className="link-col">
-              <h4>WORLD CUP 2030</h4>
-              <a href="#">Tickets</a>
-              <a href="#">Stadium Guide</a>
-              <a href="#">Host Cities</a>
-            </div>
-            <div className="link-col">
-              <h4>SUPPORT</h4>
-              <a href="#">Help Center</a>
-              <a href="#">Community</a>
-              <a href="#">Contact</a>
-            </div>
-          </div>
-        </div>
-        <div className="footer-bottom-v3">
-          <p>© 2026 TRAVELAI MOROCCO 2030 OFFICIAL PARTNER.</p>
-        </div>
-      </footer>
     </div>
   );
 };

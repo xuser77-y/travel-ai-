@@ -77,9 +77,8 @@ const Navbar = () => {
   return (
     <nav className={`navbar ${language === 'ar' ? 'rtl' : ''}`} aria-label="Primary">
       <div className="nav-container">
-        <Link to="/" className="nav-logo" aria-label="TravelAI Home">
-          <Trophy className="logo-icon" size={24} />
-          <span>Travel<span>AI</span></span>
+        <Link to="/" className="nav-logo" aria-label="Travio Home">
+          <img src="/logooo.png" alt="Travio" className="logo-img" style={{ height: '48px', width: 'auto' }} />
         </Link>
 
         <div ref={menuRef} className={`nav-links ${isMenuOpen ? 'active' : ''}`}>

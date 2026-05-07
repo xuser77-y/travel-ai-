@@ -1,4 +1,4 @@
-# TravelAI — AI-Powered Travel Planning Platform
+# Travio — AI-Powered Travel Planning Platform
 
 > Plan smarter. Travel together. A full-stack platform that combines AI itinerary generation, real-time community signals, an interactive live map, persistent fan hubs, a dedicated **FIFA World Cup 2030 Morocco** companion experience, and a complete admin console with live operational metrics and editable AI prompts.
 
@@ -6,7 +6,7 @@
 
 ## 1. Vision
 
-TravelAI is built around a single idea: *travel planning should feel alive*. Instead of static guides, the app generates a personalized day-by-day itinerary in seconds, lets travelers share what's actually happening on the ground in real time, and adds a curated companion mode for the **2030 World Cup co-hosted by Morocco, Spain and Portugal**.
+Travio is built around a single idea: *travel planning should feel alive*. Instead of static guides, the app generates a personalized day-by-day itinerary in seconds, lets travelers share what's actually happening on the ground in real time, and adds a curated companion mode for the **2030 World Cup co-hosted by Morocco, Spain and Portugal**.
 
 The platform ships with five first-class experiences:
 
@@ -49,7 +49,7 @@ The platform ships with five first-class experiences:
   - **Overpass API** — nearby POIs
 
 ### Storage / Infra
-- MongoDB local (`mongodb://localhost:27017/travelai`)
+- MongoDB local (`mongodb://localhost:27017/travio`)
 - Multer in-memory upload → base64 stored on `LivePost.imageData`
 
 ---
@@ -305,7 +305,7 @@ Both providers wrap the app in `App.jsx`.
 
 ```
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/travelai
+MONGODB_URI=mongodb://localhost:27017/travio
 GROQ_API_KEY=<your_groq_key>
 PEXELS_API_KEY=<your_pexels_key>
 JWT_SECRET=<long_random_string>
@@ -495,7 +495,7 @@ Each plan card now renders **every** feature with a green ✓ + "Yes" badge or a
 **Required env vars (backend `.env`)**
 ```
 JWT_SECRET=...
-MONGODB_URI=mongodb://localhost:27017/travelai
+MONGODB_URI=mongodb://localhost:27017/travio
 GROQ_API_KEY=...
 PEXELS_API_KEY=...
 ADMIN_EMAIL=you@example.com    # comma-separated whitelist that auto-promotes to superadmin

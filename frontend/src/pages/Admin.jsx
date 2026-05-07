@@ -48,12 +48,12 @@ const Admin = () => {
   // monitoring one tab (e.g. "Users" or "Plans") and re-loading shouldn't
   // bounce them back to Overview.
   const [section, setSectionState] = useState(() => {
-    try { return localStorage.getItem('travelai_admin_section') || 'overview'; }
+    try { return localStorage.getItem('travio_admin_section') || 'overview'; }
     catch { return 'overview'; }
   });
   const setSection = (s) => {
     setSectionState(s);
-    try { localStorage.setItem('travelai_admin_section', s); } catch { /* ignore */ }
+    try { localStorage.setItem('travio_admin_section', s); } catch { /* ignore */ }
   };
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState({ items: [], total: 0, page: 1 });

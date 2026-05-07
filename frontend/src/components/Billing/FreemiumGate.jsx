@@ -93,7 +93,7 @@ const FreemiumGate = ({ feature, featureLabel = 'this feature', icon, children }
             <>
               You've used <strong>{used}</strong> of your <strong>{limit}</strong> free
               explorations. Upgrade your plan to unlock <strong>{featureLabel}</strong> and
-              every other premium feature in TravelAI.
+              every other premium feature in Travio.
             </>
           )}
         </p>

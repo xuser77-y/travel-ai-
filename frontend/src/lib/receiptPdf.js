@@ -49,15 +49,11 @@ const buildReceiptPdf = ({ receipt, buyer, seller }) => {
   const margin = 20;
   const contentWidth = pageWidth - margin * 2;
 
-  // ----- Brand + Receipt meta header -----
+  // ----- Brand Header -----
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
+  doc.setFontSize(26);
   doc.setTextColor(17, 17, 17);
-  doc.text('Travel', margin, 25);
-  const brandWidth = doc.getTextWidth('Travel');
-  doc.setTextColor(168, 85, 247); // accent purple
-  doc.text('AI', margin + brandWidth, 25);
-  doc.setTextColor(17, 17, 17);
+  doc.text('TRAVIO', margin, 25);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
@@ -204,9 +200,9 @@ const buildReceiptPdf = ({ receipt, buyer, seller }) => {
   const footerLines = [];
   if (receipt.provider === 'mock') {
     footerLines.push('This is a sandbox / developer receipt. No real payment was processed.');
-    footerLines.push('Generated automatically for testing the TravelAI subscription flow.');
+    footerLines.push('Generated automatically for testing the Travio subscription flow.');
   } else {
-    footerLines.push('Thank you for subscribing to TravelAI.');
+    footerLines.push('Thank you for subscribing to Travio.');
   }
   if (receipt.note) footerLines.push(receipt.note);
 

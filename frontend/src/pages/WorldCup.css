@@ -385,7 +385,7 @@ body.light-mode .wc-hero-v2 .btn-glass:hover {
 
 .mp-body {
   padding: 14px 16px;
-  background: #ffffff;
+  background: var(--bg-elev);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -402,14 +402,14 @@ body.light-mode .wc-hero-v2 .btn-glass:hover {
 .mp-body h4 {
   font-size: 1.05rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
 .mp-body p {
   font-size: 0.82rem;
-  color: #475569;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -632,6 +632,38 @@ body.light-mode .wc-hero-v2 .btn-glass:hover {
   font-size: 0.65rem;
   display: inline-block;
   margin-right: 6px;
+}
+
+.sc-more-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.sc-more-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.sc-more-btn svg {
+  transition: transform 0.2s;
+}
+
+.sc-more-btn:hover svg {
+  transform: translateX(4px);
 }
 
 /* Curated Itineraries - Reference Style */

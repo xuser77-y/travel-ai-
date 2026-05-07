@@ -3,12 +3,12 @@ import { create } from 'zustand';
 // Read joinedHubs from a freshly hydrated user object (login response or
 // previously stored localStorage user) so we don't lose membership state
 // on page refresh.
-const initialUser = JSON.parse(localStorage.getItem('travelai_user')) || null;
+const initialUser = JSON.parse(localStorage.getItem('travio_user')) || null;
 const initialJoinedHubs = (() => {
   const fromUser = Array.isArray(initialUser?.joinedHubs) ? initialUser.joinedHubs : [];
   if (fromUser.length) return fromUser.map(String);
   try {
-    const cached = JSON.parse(localStorage.getItem('travelai_joined_hubs') || '[]');
+    const cached = JSON.parse(localStorage.getItem('travio_joined_hubs') || '[]');
     return Array.isArray(cached) ? cached.map(String) : [];
   } catch {
     return [];
@@ -17,7 +17,7 @@ const initialJoinedHubs = (() => {
 
 const persistJoinedHubs = (ids) => {
   try {
-    localStorage.setItem('travelai_joined_hubs', JSON.stringify(ids));
+    localStorage.setItem('travio_joined_hubs', JSON.stringify(ids));
   } catch {
     /* ignore quota errors */
   }
@@ -38,8 +38,8 @@ const writePref = (key, value) => {
 
 // Hydrate UI prefs from localStorage so the very first render uses the
 // user's last choice — no flash of the wrong theme on reload.
-const initialLanguage = readPref('travelai_lang', 'en');
-const initialDarkMode = readPref('travelai_theme', 'dark') !== 'light';
+const initialLanguage = readPref('travio_lang', 'en');
+const initialDarkMode = readPref('travio_theme', 'dark') !== 'light';
 // Apply theme class synchronously before React paints.
 if (typeof document !== 'undefined') {
   if (initialDarkMode) document.body.classList.remove('light-mode');
@@ -67,30 +67,30 @@ const useTripStore = create((set, get) => ({
   // Results
   currentTrip: null,
   user: initialUser,
-  token: localStorage.getItem('travelai_token') || null,
+  token: localStorage.getItem('travio_token') || null,
   // Persistent hub membership (room ids the user has joined). The Global
   // Travel Hub is auto-added by the backend on signup. Click-to-join only once.
   joinedHubs: initialJoinedHubs,
 
   // Actions
   login: (userData, token) => {
-    localStorage.setItem('travelai_user', JSON.stringify(userData));
-    localStorage.setItem('travelai_token', token);
+    localStorage.setItem('travio_user', JSON.stringify(userData));
+    localStorage.setItem('travio_token', token);
     const hubs = Array.isArray(userData?.joinedHubs) ? userData.joinedHubs.map(String) : [];
     persistJoinedHubs(hubs);
     set({ user: userData, token, joinedHubs: hubs });
   },
   
   logout: () => {
-    localStorage.removeItem('travelai_user');
-    localStorage.removeItem('travelai_token');
-    localStorage.removeItem('travelai_joined_hubs');
+    localStorage.removeItem('travio_user');
+    localStorage.removeItem('travio_token');
+    localStorage.removeItem('travio_joined_hubs');
     set({ user: null, token: null, currentTrip: null, joinedHubs: [] });
   },
 
   setUser: (user) => {
-    if (user) localStorage.setItem('travelai_user', JSON.stringify(user));
-    else localStorage.removeItem('travelai_user');
+    if (user) localStorage.setItem('travio_user', JSON.stringify(user));
+    else localStorage.removeItem('travio_user');
     set({ user });
   },
 
@@ -99,7 +99,7 @@ const useTripStore = create((set, get) => ({
   setSubscription: (subscription) => set((state) => {
     if (!state.user) return state;
     const next = { ...state.user, subscription };
-    localStorage.setItem('travelai_user', JSON.stringify(next));
+    localStorage.setItem('travio_user', JSON.stringify(next));
     return { user: next };
   }),
 
@@ -122,7 +122,7 @@ const useTripStore = create((set, get) => ({
       set((state) => {
         if (!state.user) return state;
         const next = { ...state.user, subscription };
-        localStorage.setItem('travelai_user', JSON.stringify(next));
+        localStorage.setItem('travio_user', JSON.stringify(next));
         return { user: next };
       });
     } catch (_) { /* network — ignore */ }
@@ -160,13 +160,13 @@ const useTripStore = create((set, get) => ({
   setTrip: (trip) => set({ currentTrip: trip }),
   setGenerating: (status) => set({ isGenerating: status }),
   setLanguage: (lang) => {
-    writePref('travelai_lang', lang);
+    writePref('travio_lang', lang);
     set({ language: lang });
   },
   toggleDarkMode: () => set((state) => {
     const newVal = !state.isDarkMode;
     document.body.classList.toggle('light-mode', !newVal);
-    writePref('travelai_theme', newVal ? 'dark' : 'light');
+    writePref('travio_theme', newVal ? 'dark' : 'light');
     return { isDarkMode: newVal };
   }),
 
