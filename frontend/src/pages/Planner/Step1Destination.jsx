@@ -13,7 +13,7 @@ const codeToFlag = (cc) => {
 
 const Step1Destination = () => {
   const navigate = useNavigate();
-  const { formData, setFormData } = useTripStore();
+  const { token, formData, setFormData } = useTripStore();
   const [startQuery, setStartQuery] = useState(formData.startCity || '');
   const [destQuery, setDestQuery] = useState(formData.destination.name || '');
   const [startSuggestions, setStartSuggestions] = useState([]);
@@ -177,6 +177,10 @@ const Step1Destination = () => {
   };
 
   const handleNext = () => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     // Block in AI mode until the user has actually accepted a suggestion.
     if (isAiMode && !formData.destination?.lat) {
       setAiError('Pick a destination first — click "Find my destination".');
