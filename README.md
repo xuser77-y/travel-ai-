@@ -424,7 +424,97 @@ The `Trip` model gained `hotels.options[]`, `weatherDaily[]` and `itinerary[].we
 - **Hotel total bug** — `trip.hotels.price` is now the realistic total stay; `pricePerNight` is preserved separately for the `BookingSection`.
 - **Single source of truth** — the `style → allocation` table is computed once and re-used by both the prompt and the saved `breakdown`.
 - **Proportional budget donut** — `BudgetRing` was rendering two hard-coded segments; it now builds 5 proportional segments (flights/hotels/food/activities/other), shows percentages in the legend, uses the trip currency in the centre, and rotates to start at 12 o'clock.
-- **Pexels resilience** — `photoService` now swallows `ENOTFOUND` / `EAI_AGAIN` / `ECONNREFUSED` errors, flips an in-memory circuit breaker for 10 minutes so trip generation no longer spams the console, and falls back to a curated deterministic image per destination. Successful lookups are cached for 24 h via `node-cache`.
+- **Pexels resilience** — `photoService` now swallows `ENOTFOUND` / `EAI_AGAIN` / `ECONNREFUSED` errors, flips an in-memory circuit breaker for 10 minutes so trip generation no longer spams the console, and falls back to a curated deterministic image per destination. Successful lookups are cached for 24 h.
+
+### Subscription plans, PayPal billing, Settings & Superadmin
+
+The whole monetization layer was added in one pass. Highlights:
+
+**Plans (single source of truth: `backend/services/planService.js`)**
+- `free` — 3 lifetime trip generations (planner + refine).
+- `basic` — unlimited planner + refine.
+- `pro` — adds Community Hubs + Live Map.
+- `premium` — adds World Cup 2030 + priority generation.
+- Prices are placeholders, editable from the admin **Plans & Billing** tab. Overrides persist in `backend/data/plan-overrides.json` so they survive restarts.
+
+**User schema** (`backend/models/User.js`) gained:
+`plan`, `planExpiresAt`, `freeTripsUsed`, `trialLimit`, `subscriptionHistory[]`.
+
+**Gating** — `backend/middleware/planGate.js` exposes:
+- `requireAuth` — attach `req.user` (full Mongoose doc).
+- `requireFeature(feature)` — 402 with `{ feature, currentPlan, upgradeUrl }`.
+- `requireTripQuota` — 402 when free trial is exhausted (planner-specific).
+
+Wired on:
+- `POST /api/trips/generate` → `requireAuth + requireTripQuota`. Increments `freeTripsUsed` only on success.
+- `POST /api/chat/rooms/:id/join` → `requireFeature('community')`.
+- `POST /api/livemap/posts` → `requireFeature('livemap')`.
+- *Admins always pass every gate.*
+
+**Simulated checkout (sandbox / developer mode)** — `backend/routes/payments.js`
+The original PayPal sandbox always redirected the buyer to a "Create a PayPal account" page, which made every demo painful. The project now ships with a **mock checkout** that's perfect for development, demos and the PFE jury:
+
+- `GET  /api/payments/plans` — public; returns tiers + the **feature label catalog** + `provider: 'mock'`.
+- `GET  /api/payments/subscription` — auth; current plan snapshot.
+- `POST /api/payments/checkout` — auth; body `{ plan }`. Stamps a synthetic order id (`MOCK-...`), extends `planExpiresAt` by 30 days, appends a `subscriptionHistory` entry with `provider: 'mock'`. Replaces the create-order/capture-order pair.
+- `GET  /api/payments/receipt/:historyId` — auth; returns the JSON the FE renders into a printable receipt (buyer + seller + line items + totals).
+
+`paypalService.js` is kept as a deprecation stub that throws if anything tries to import it, so the codebase fails loud rather than quietly hitting a real PayPal endpoint.
+
+**Printable PDF receipts** — `frontend/src/lib/receipt.js`
+After a successful `POST /checkout` (or by clicking **Receipt** in the purchase history), the FE fetches `/payments/receipt/:id`, builds a self-contained HTML invoice (brand + buyer + plan + line items + totals + sandbox notice) and opens it in a new tab. The window auto-triggers `window.print()` so the user can **Save as PDF** in one click — no PDF library needed. If the popup is blocked the helper falls back to downloading the same HTML as a `.html` file.
+
+**Yes / No feature matrix on the Billing page**
+Each plan card now renders **every** feature with a green ✓ + "Yes" badge or a grey ✗ + "No" badge. The list is driven by what the admin has checked in the dashboard — never hard-coded — so the Billing page is always in sync with the gating middleware.
+
+**Settings page** (`/settings`)
+- `frontend/src/pages/Settings.jsx` + `backend/routes/settings.js`.
+- Tabs: **Profile** (name/bio/currency/interests), **Password** (verifies current), **Subscription** (snapshot + "Manage billing" deep link), **Danger zone** (self-delete; admins blocked).
+
+**Admin (a.k.a. superadmin) gets full control over everything**
+- `isAdmin === true` is the single superadmin flag. The middleware already short-circuits every gate for admins; the FE `usePlan` hook does the same.
+- New admin endpoints in `backend/routes/admin.js`:
+  - `GET  /api/admin/plans` and `PATCH /api/admin/plans/:id` — edit tier name/price/currency/description **and the features array** via the dashboard checkboxes (persisted via `plan-overrides.json`).
+  - `POST /api/admin/users/:id/grant-plan` `{ plan, days }` — gift a paid plan and append a `granted` history entry.
+  - `POST /api/admin/users/:id/grant-trials` `{ count }` — give extra free trips (raises `trialLimit`).
+  - `POST /api/admin/users/:id/revoke-trial` — caps `trialLimit` to current `freeTripsUsed` so the user can't generate more free trips.
+  - `POST /api/admin/users/:id/expire-plan` — force back to free.
+  - `GET  /api/admin/users/:id` — full detail incl. subscription history.
+  - The existing `PATCH /api/admin/users/:id` now accepts `plan`, `trialLimit`, `freeTripsUsed`, `planExpiresAt`.
+- Frontend: the **Plans & Billing** admin tab (`frontend/src/pages/AdminPlans.jsx`) ships:
+  - one card per tier with editable name / price / currency / description / "highlight" toggle,
+  - a **checkbox grid** for every feature in `planService.ALL_FEATURES` so the admin decides exactly what each plan unlocks,
+  - a per-user search + actions row: **Grant plan**, **Add trials**, **Revoke trial**, **Force expire**.
+
+**Frontend infrastructure**
+- `frontend/src/components/Billing/PlanGate.jsx` exposes `usePlan()` (current plan, features, trial counters) and a `<PlanGate feature="...">` wrapper.
+- `frontend/src/stores/tripStore.js` gained `setSubscription()` so Billing/Settings can update the cached user without a full re-login.
+- `Loading.jsx` (planner) now renders a dedicated **upgrade screen** when generation returns 402, instead of a generic error.
+- `Navbar.jsx` gained a **Billing & Plan** entry in the user menu.
+
+**Required env vars (backend `.env`)**
+```
+JWT_SECRET=...
+MONGODB_URI=mongodb://localhost:27017/travelai
+GROQ_API_KEY=...
+PEXELS_API_KEY=...
+ADMIN_EMAIL=you@example.com    # comma-separated whitelist that auto-promotes to superadmin
+
+# OPTIONAL — only needed if you want to test real card payments.
+# Get a free test key at https://dashboard.stripe.com/test/apikeys
+STRIPE_SECRET_KEY=sk_test_...
+FRONTEND_URL=http://localhost:3000  # used in Stripe success/cancel redirects
+PAYMENT_PROVIDER=mock               # default; admin can flip to 'stripe' in the dashboard
+```
+
+**Two payment providers are supported**, switchable from the admin dashboard at runtime:
+
+1. **`mock`** (default) — instant in-process simulated purchase. Perfect for the PFE demo and screenshots; no third-party account needed; appends `provider: 'mock'` to `subscriptionHistory`.
+2. **`stripe`** — real Stripe Checkout in **test mode**. Works in Morocco for developers (no buyer account needed). Use the test card `4242 4242 4242 4242` with any future expiry, any CVC, any postal code. Backend endpoints:
+   - `POST /api/payments/stripe/create-session` → returns the hosted checkout URL.
+   - `POST /api/payments/stripe/finalize` → idempotently verifies the session and grants the plan after the success redirect.
+
+The active provider is persisted to `backend/data/payment-config.json` via `PATCH /api/admin/payment-config { provider }` so it survives restarts.
 
 See `ARCH.md` for the full architecture, AI pipeline and design patterns.
 

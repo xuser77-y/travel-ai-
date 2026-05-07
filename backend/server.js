@@ -36,6 +36,22 @@ app.use(apiTracker.middleware());
 // Socket.io Connection
 const ChatRoom = require('./models/ChatRoom');
 const onlineTracker = require('./services/onlineTracker');
+const User = require('./models/User');
+const jwt = require('jsonwebtoken');
+const planService = require('./services/planService');
+
+// Resolves the JWT in `socket.handshake.auth.token` (or the legacy
+// `query.token`) into a Mongoose user. Returns null for guests so we can
+// reject them on gated events. Does NOT throw — bad tokens are just
+// treated as "no user".
+const userFromSocket = async (socket) => {
+  try {
+    const token = socket.handshake?.auth?.token || socket.handshake?.query?.token;
+    if (!token) return null;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return await User.findById(decoded.id);
+  } catch (_) { return null; }
+};
 
 // Initialize Global Hubs in DB if they don't exist.
 // We upsert and force-update the categorization flags so existing DBs
@@ -115,6 +131,53 @@ io.on('connection', (socket) => {
     try {
       const { roomId, sender, text } = data;
 
+      // Plan gate — bug fix: free users used to be able to broadcast into
+      // any community room because socket events were unauthenticated.
+      // Now we resolve the user from the JWT carried on the socket and
+      // bail unless their effective plan unlocks `community`.
+      const user = await userFromSocket(socket);
+      if (!user) {
+        socket.emit('send_message_error', {
+          code: 'unauthorized',
+          message: 'Please sign in to send messages.'
+        });
+        return;
+      }
+      // Combined gate — same rules as the HTTP `requireFeature` middleware:
+      //   admin                  → pass
+      //   paid + has feature     → pass
+      //   paid + missing feature → block (e.g. Basic doesn't include community)
+      //   free + uses left       → pass
+      //   free + locked          → block
+      if (!user.isAdmin) {
+        const plan = planService.effectivePlan(user);
+        if (planService.isPaidPlan(plan)) {
+          if (!planService.userHasFeature(user, 'community')) {
+            socket.emit('send_message_error', {
+              code: 'feature_not_in_plan',
+              feature: 'community',
+              featureLabel: planService.FEATURE_LABELS.community,
+              currentPlan: user.plan,
+              upgradeUrl: '/billing',
+              message: `Your ${user.plan} plan does not include Community Hubs. Upgrade to unlock.`
+            });
+            return;
+          }
+        } else if (planService.isFreemiumLocked(user)) {
+          socket.emit('send_message_error', {
+            code: 'freemium_exhausted',
+            feature: 'community',
+            featureLabel: planService.FEATURE_LABELS.community,
+            currentPlan: 'free',
+            upgradeUrl: '/billing',
+            message:
+              `You've used all ${user.trialLimit || 3} of your free explorations. ` +
+              `Upgrade to keep chatting in Community Hubs.`
+          });
+          return;
+        }
+      }
+
       // Save message to database
       await ChatRoom.findByIdAndUpdate(roomId, {
         $push: { messages: { sender, text, timestamp: new Date() } }
@@ -122,6 +185,11 @@ io.on('connection', (socket) => {
 
       // Broadcast to everyone in the room
       io.to(roomId).emit('receive_message', data);
+
+      // Free users burn one of their 3 uses per posted message.
+      if (!user.isAdmin && !planService.isPaidPlan(planService.effectivePlan(user))) {
+        await User.findByIdAndUpdate(user._id, { $inc: { freeTripsUsed: 1 } });
+      }
     } catch (err) {
       console.error('Socket Error:', err);
     }
@@ -140,6 +208,8 @@ const authRoutes = require('./routes/auth');
 const worldcupRoutes = require('./routes/worldcup');
 const livemapRoutes = require('./routes/livemap');
 const adminRoutes = require('./routes/admin');
+const paymentRoutes = require('./routes/payments');
+const settingsRoutes = require('./routes/settings');
 
 app.use('/api/trips', tripRoutes);
 app.use('/api/search', searchRoutes);
@@ -148,6 +218,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/worldcup', worldcupRoutes);
 app.use('/api/livemap', livemapRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.get('/', (req, res) => {
   res.send('TravelAI Backend API is running');

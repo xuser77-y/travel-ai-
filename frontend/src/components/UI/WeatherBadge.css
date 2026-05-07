@@ -8,7 +8,10 @@
   border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--glass-bg);
-  margin-bottom: 16px;
+  /* Spacing is owned by the parent (`.itinerary-timeline gap`). The
+     previous `margin-bottom: 16px` stacked on top of that gap and on
+     top of the day-tabs section margin, producing a visible empty
+     band between the day pills and the weather badge. */
 }
 
 .weather-badge.rating-excellent { background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(34,197,94,0.04)); border-color: rgba(34,197,94,0.35); }

@@ -1,0 +1,215 @@
+/* FreemiumGate — full-page blur + centered upgrade modal */
+
+.freemium-gate {
+  position: relative;
+  width: 100%;
+  min-height: 80vh;
+}
+
+/* The blurred page underneath. Heavy blur + reduced saturation reads
+   instantly as "locked" without making content unreadable for the
+   pre-purchase preview. */
+.freemium-gate__blur {
+  filter: blur(8px) saturate(0.7) brightness(0.85);
+  -webkit-filter: blur(8px) saturate(0.7) brightness(0.85);
+  pointer-events: none;
+  user-select: none;
+  /* Prevent the blurred layer from capturing tab focus */
+  width: 100%;
+}
+
+/* Soft dark overlay between the blur and the modal so the modal pops */
+.freemium-gate::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(15, 23, 42, 0.55) 0%,
+    rgba(15, 23, 42, 0.78) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+body.light-mode .freemium-gate::before {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(248, 250, 252, 0.55) 0%,
+    rgba(226, 232, 240, 0.78) 100%
+  );
+}
+
+/* The modal — fixed inside the gate so it stays centered on scroll */
+.freemium-gate__modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  width: min(440px, calc(100vw - 32px));
+  padding: 32px 28px 24px;
+  border-radius: 20px;
+  background: linear-gradient(
+    160deg,
+    rgba(30, 41, 59, 0.96) 0%,
+    rgba(15, 23, 42, 0.96) 100%
+  );
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 60px rgba(168, 85, 247, 0.18);
+  color: #f1f5f9;
+  text-align: center;
+  animation: freemium-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+body.light-mode .freemium-gate__modal {
+  background: #ffffff;
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #0f172a;
+  box-shadow:
+    0 25px 60px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(168, 85, 247, 0.08) inset;
+}
+
+@keyframes freemium-pop {
+  0%   { opacity: 0; transform: translate(-50%, -45%) scale(0.92); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.freemium-gate__icon-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.freemium-gate__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(168, 85, 247, 0.45);
+}
+
+.freemium-gate__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+body.light-mode .freemium-gate__badge {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.freemium-gate__modal h2 {
+  margin: 0 0 12px;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.freemium-gate__sub {
+  margin: 0 0 20px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  opacity: 0.85;
+}
+.freemium-gate__sub strong { color: #c084fc; }
+body.light-mode .freemium-gate__sub strong { color: #7c3aed; }
+
+.freemium-gate__usage {
+  margin-bottom: 22px;
+}
+.freemium-gate__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+body.light-mode .freemium-gate__bar { background: #e9d5ff; }
+.freemium-gate__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+  transition: width 0.4s ease;
+}
+.freemium-gate__usage-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-top: 6px;
+}
+
+.freemium-gate__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.freemium-gate__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.freemium-gate__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(168, 85, 247, 0.45);
+}
+
+.freemium-gate__ghost {
+  padding: 11px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: inherit;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.freemium-gate__ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(168, 85, 247, 0.35);
+}
+body.light-mode .freemium-gate__ghost {
+  border-color: #e2e8f0;
+}
+body.light-mode .freemium-gate__ghost:hover {
+  background: #f8fafc;
+  border-color: #c084fc;
+}
+
+.freemium-gate__fine-print {
+  margin: 0;
+  font-size: 0.72rem;
+  opacity: 0.55;
+  line-height: 1.4;
+}

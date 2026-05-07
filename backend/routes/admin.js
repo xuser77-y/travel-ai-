@@ -9,7 +9,10 @@ const LivePost = require('../models/LivePost');
 const onlineTracker = require('../services/onlineTracker');
 const apiTracker = require('../services/apiTracker');
 const promptService = require('../services/promptService');
+const planService = require('../services/planService');
 const { hashPassword, verifyPassword } = require('../services/password');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 // ---------------------------------------------------------------------------
@@ -132,6 +135,23 @@ router.patch('/users/:id', async (req, res) => {
     if (typeof req.body.isAdmin === 'boolean') allowed.isAdmin = req.body.isAdmin;
     if (typeof req.body.disabled === 'boolean') allowed.disabled = req.body.disabled;
     if (typeof req.body.name === 'string') allowed.name = req.body.name;
+    // Plan management — superadmin can move a user between tiers, edit
+    // their trial allowance, or extend/expire their subscription.
+    if (typeof req.body.plan === 'string' && ['free', 'basic', 'pro', 'premium'].includes(req.body.plan)) {
+      allowed.plan = req.body.plan;
+    }
+    if (typeof req.body.trialLimit === 'number' && req.body.trialLimit >= 0) {
+      allowed.trialLimit = Math.floor(req.body.trialLimit);
+    }
+    if (typeof req.body.freeTripsUsed === 'number' && req.body.freeTripsUsed >= 0) {
+      allowed.freeTripsUsed = Math.floor(req.body.freeTripsUsed);
+    }
+    if (req.body.planExpiresAt === null) {
+      allowed.planExpiresAt = null;
+    } else if (typeof req.body.planExpiresAt === 'string') {
+      const d = new Date(req.body.planExpiresAt);
+      if (!isNaN(d.getTime())) allowed.planExpiresAt = d;
+    }
     if (Object.keys(allowed).length === 0) {
       return res.status(400).json({ error: 'Nothing to update' });
     }
@@ -583,6 +603,190 @@ router.post('/prompts/:key/reset', async (req, res) => {
     if (err.message?.startsWith('Unknown prompt key')) {
       return res.status(404).json({ error: err.message });
     }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PLANS — superadmin manages tier prices and grants subscriptions / trials
+// ---------------------------------------------------------------------------
+
+// Plan persistence now lives entirely inside `services/planService.js`
+// (single source of truth — see `updatePlan` / `getOverrides`). This route
+// is just a thin validating wrapper.
+
+router.get('/plans', (req, res) => {
+  res.json({
+    plans: planService.listPlans(),
+    overrides: planService.getOverrides()
+  });
+});
+
+// GET /api/admin/payment-config — current provider + Stripe availability
+// PATCH /api/admin/payment-config — flip between 'mock' and 'stripe'
+router.get('/payment-config', (req, res) => {
+  const paymentsRouter = require('./payments');
+  const stripeService = require('../services/stripeService');
+  res.json({
+    provider: paymentsRouter.getActiveProvider(),
+    stripeAvailable: stripeService.enabled()
+  });
+});
+
+router.patch('/payment-config', (req, res) => {
+  try {
+    const paymentsRouter = require('./payments');
+    const provider = paymentsRouter.setActiveProvider(req.body?.provider);
+    res.json({ ok: true, provider });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin/plans/:id — superadmin edits everything about a plan,
+// including which features it unlocks. `planService.updatePlan` validates
+// the patch (price >= 0, features must be in ALL_FEATURES, etc.) so the
+// gating middleware can never end up with a nonsense plan definition.
+router.patch('/plans/:id', (req, res) => {
+  const id = req.params.id;
+  if (!planService.PLAN_DEFS[id]) return res.status(404).json({ error: 'Unknown plan' });
+  const patch = {};
+  if (typeof req.body.priceMonthly === 'number' && req.body.priceMonthly >= 0) {
+    patch.priceMonthly = req.body.priceMonthly;
+  }
+  if (typeof req.body.currency === 'string' && req.body.currency.trim()) {
+    patch.currency = req.body.currency.trim().toUpperCase();
+  }
+  if (typeof req.body.name === 'string' && req.body.name.trim()) patch.name = req.body.name.trim();
+  if (typeof req.body.description === 'string') patch.description = req.body.description;
+  if (typeof req.body.highlight === 'boolean') patch.highlight = req.body.highlight;
+  if (Array.isArray(req.body.features)) {
+    // De-dupe & normalize; planService re-validates against ALL_FEATURES.
+    patch.features = [...new Set(req.body.features.filter((f) => typeof f === 'string'))];
+  }
+  if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Nothing to update' });
+  try {
+    const def = planService.updatePlan(id, patch);
+    res.json(def);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/users/:id/revoke-trial — caps the user's trial right now
+// without deleting their existing usage record. We set `trialLimit` equal
+// to `freeTripsUsed` so the next /generate call returns 402 cleanly.
+router.post('/users/:id/revoke-trial', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    user.trialLimit = user.freeTripsUsed || 0;
+    await user.save();
+    res.json({
+      ok: true,
+      trialLimit: user.trialLimit,
+      freeTripsUsed: user.freeTripsUsed
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/users/:id/grant-plan { plan, days }
+router.post('/users/:id/grant-plan', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    const planId = String(req.body?.plan || '').toLowerCase();
+    if (!['basic', 'pro', 'premium'].includes(planId)) {
+      return res.status(400).json({ error: 'Invalid plan' });
+    }
+    const days = Math.max(1, Math.min(365, parseInt(req.body?.days, 10) || 30));
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const now = new Date();
+    const baseStart = user.planExpiresAt && new Date(user.planExpiresAt) > now && user.plan === planId
+      ? new Date(user.planExpiresAt)
+      : now;
+    const periodEnd = new Date(baseStart.getTime() + days * 24 * 60 * 60 * 1000);
+    user.plan = planId;
+    user.planExpiresAt = periodEnd;
+    user.subscriptionHistory.push({
+      plan: planId,
+      amount: 0,
+      currency: 'USD',
+      provider: 'admin',
+      periodStart: now,
+      periodEnd,
+      status: 'granted',
+      note: req.body?.note || `Granted by ${req.adminUser.email}`
+    });
+    await user.save();
+    res.json({ ok: true, subscription: planService.publicSubscription(user) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/users/:id/grant-trials { count }
+router.post('/users/:id/grant-trials', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    const count = parseInt(req.body?.count, 10);
+    if (!Number.isFinite(count) || count <= 0) {
+      return res.status(400).json({ error: 'Count must be a positive integer' });
+    }
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { trialLimit: count } },
+      { new: true }
+    ).select('-password');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ ok: true, trialLimit: user.trialLimit, freeTripsUsed: user.freeTripsUsed });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/users/:id/expire-plan — force back to free
+router.post('/users/:id/expire-plan', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: { plan: 'free', planExpiresAt: null } },
+      { new: true }
+    ).select('-password');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/users/:id — full detail incl. subscription history
+router.get('/users/:id', async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+    const user = await User.findById(req.params.id).select('-password').lean();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const tripsCount = await Trip.countDocuments({ userId: user._id });
+    res.json({
+      ...user,
+      tripsCount,
+      effectivePlan: planService.effectivePlan(user)
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

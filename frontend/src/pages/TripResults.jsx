@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import useTripStore from '../stores/tripStore';
 import MapView from '../components/Map/MapView';
 import BudgetRing from '../components/Budget/BudgetRing';
@@ -12,7 +12,8 @@ import './TripResults.css';
 
 const TripResults = () => {
   const { id } = useParams();
-  const { currentTrip, setTrip, token } = useTripStore();
+  const navigate = useNavigate();
+  const { currentTrip, setTrip, token, refreshSubscription } = useTripStore();
   const [activeDay, setActiveDay] = useState(0);
   const [activeActivity, setActiveActivity] = useState(-1);
   const [showChat, setShowChat] = useState(false);
@@ -78,20 +79,42 @@ const TripResults = () => {
     setIsTyping(true);
 
     try {
-      const res = await axios.post('http://localhost:5000/api/trips/refine', {
-        currentTrip: trip,
-        userMessage: chatInput
-      });
+      // Bug fix: the refine endpoint is now plan-gated, so we MUST send
+      // the JWT or we'll get a 401 and the AI chat shows the generic
+      // "I'm sorry, I couldn't process that change" error.
+      const res = await axios.post(
+        'http://localhost:5000/api/trips/refine',
+        { currentTrip: trip, userMessage: chatInput },
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
 
       const { aiResponse, updatedTrip } = res.data;
-      
+
       setMessages(prev => [...prev, { role: 'bot', text: aiResponse }]);
       if (updatedTrip) {
         setTrip(updatedTrip); // Update the global state and UI
       }
+      // Refresh the freemium counter so the FreemiumGate flips to "locked"
+      // immediately if this was the user's 3rd free use, instead of
+      // waiting for a navigation to /me.
+      refreshSubscription?.();
     } catch (err) {
       console.error('Refinement failed:', err);
-      setMessages(prev => [...prev, { role: 'bot', text: "I'm sorry, I couldn't process that change. Please try again." }]);
+      // Translate 401 / 402 into helpful, plan-aware messages instead of
+      // the generic "try again" so the user knows whether to log in or
+      // upgrade.
+      const status = err.response?.status;
+      const data = err.response?.data;
+      let text = "I'm sorry, I couldn't process that change. Please try again.";
+      if (status === 401) {
+        text = 'Please sign in again to use the AI chat.';
+      } else if (status === 402) {
+        const label = data?.featureLabel || 'AI Refinement Chat';
+        text = `⚠️ ${label} is not included in your current plan. Upgrade at /billing to keep refining trips with AI.`;
+      } else if (data?.error) {
+        text = data.error;
+      }
+      setMessages(prev => [...prev, { role: 'bot', text }]);
     } finally {
       setIsTyping(false);
     }
@@ -141,7 +164,20 @@ const TripResults = () => {
               <span className="label">Invite Code</span>
               <span className="code">{trip.chatRoom.inviteCode}</span>
             </div>
-            <button className="btn-community" onClick={() => window.location.href = '/community'}>
+            <button
+              className="btn-community"
+              onClick={() => {
+                // Use react-router navigation (NOT a full page reload) so
+                // the in-memory `currentTrip` survives the transition and
+                // we can also pass the room id explicitly via location
+                // state. The Community page reads either signal and
+                // pre-selects this trip's room — never falling back to
+                // the global hub like the old window.location did.
+                navigate('/community', {
+                  state: { roomId: trip.chatRoom?._id, fromTripId: trip._id }
+                });
+              }}
+            >
               Join Chat
             </button>
           </div>
@@ -155,10 +191,11 @@ const TripResults = () => {
             <button className="btn-community" onClick={async () => {
               // Logic to create room for old trips
               try {
-                const res = await axios.post(`http://localhost:5000/api/trips/refine`, {
-                  currentTrip: trip,
-                  userMessage: "System: Please initialize a chat room for this trip."
-                });
+                const res = await axios.post(
+                  `http://localhost:5000/api/trips/refine`,
+                  { currentTrip: trip, userMessage: "System: Please initialize a chat room for this trip." },
+                  { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                );
                 if (res.data.updatedTrip) setTrip(res.data.updatedTrip);
               } catch (e) {
                 window.location.href = '/community';
@@ -249,9 +286,17 @@ const TripResults = () => {
             </div>
           )}
 
-          {trip.itinerary[activeDay]?.sessions.map((session, sIdx) => {
+          {/* Filter out any malformed sessions before mapping. The AI
+              refine endpoint can occasionally return a session without
+              an `activity` payload (e.g. when the model deletes one
+              and forgets to also drop the slot). Keeping nulls would
+              crash the page on `session.activity.category`. */}
+          {(trip.itinerary[activeDay]?.sessions || [])
+            .filter((s) => s && s.activity)
+            .map((session, sIdx) => {
             const activityIdx = sIdx; // matches MapView marker number (1-based shown)
             const isActive = activeActivity === activityIdx;
+            const validSessions = (trip.itinerary[activeDay].sessions || []).filter((s) => s && s.activity);
             return (
               <div key={sIdx} className={`timeline-item ${isActive ? 'is-active' : ''}`}>
                 <div className="time-indicator">
@@ -259,7 +304,7 @@ const TripResults = () => {
                     <span>{activityIdx + 1}</span>
                   </div>
                   <span className="time-label">{session.time}</span>
-                  {sIdx < trip.itinerary[activeDay].sessions.length - 1 && <div className="line"></div>}
+                  {sIdx < validSessions.length - 1 && <div className="line"></div>}
                 </div>
 
                 <button
@@ -269,12 +314,12 @@ const TripResults = () => {
                 >
                   <div className="activity-info">
                     <div className="activity-top">
-                      {session.activity.category && (
+                      {session.activity?.category && (
                         <span className="category-tag">{session.activity.category}</span>
                       )}
-                      <h4>{session.activity.name}</h4>
+                      <h4>{session.activity?.name}</h4>
                     </div>
-                    {session.activity.description && <p>{session.activity.description}</p>}
+                    {session.activity?.description && <p>{session.activity.description}</p>}
                     <div className="activity-meta">
                       {typeof session.activity.cost === 'number' && session.activity.cost > 0 && (
                         <span className="cost-pill">

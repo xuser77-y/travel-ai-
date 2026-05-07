@@ -1,0 +1,54 @@
+.plan-gate {
+  max-width: 520px;
+  margin: 60px auto;
+  padding: 36px 32px;
+  text-align: center;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.plan-gate-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(168,85,247,0.18), rgba(234,179,8,0.12));
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.plan-gate h3 { margin: 0; font-size: 1.3rem; }
+.plan-gate p  { margin: 0; color: var(--text-muted); line-height: 1.55; }
+.plan-gate-cta {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+.plan-gate-cta:hover { transform: translateY(-1px); }
+
+/* Free-trial counter chip used in the planner Step1 */
+.trial-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.trial-chip.danger { color: #dc2626; border-color: rgba(239,68,68,0.4); }

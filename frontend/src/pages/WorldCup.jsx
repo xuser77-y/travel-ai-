@@ -49,9 +49,13 @@ function ThemedTiles() {
 
 const WorldCup = () => {
   const navigate = useNavigate();
-  const { language: lang, setFormData, resetStore } = useTripStore();
+  const { language: lang, setFormData, resetStore, token } = useTripStore();
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Plan gate: a 402 from /api/worldcup/cities means the user's plan
+  // doesn't include the World Cup feature. We render a soft upgrade
+  // panel instead of an empty page.
+  const [gateError, setGateError] = useState(null);
   const [activeCity, setActiveCity] = useState(null);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
 
@@ -142,10 +146,22 @@ const WorldCup = () => {
 
     const fetchWCData = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/worldcup/cities');
+        const res = await axios.get(
+          'http://localhost:5000/api/worldcup/cities',
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
         setCities(res.data);
       } catch (err) {
         console.error('Error fetching World Cup data:', err);
+        // 401 / 402 -> plan gate. Capture so the UI can show an upgrade
+        // CTA instead of a misleading "loading…" forever.
+        const status = err.response?.status;
+        if (status === 401 || status === 402) {
+          setGateError({
+            status,
+            featureLabel: err.response?.data?.featureLabel || 'World Cup 2030 Companion'
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -154,6 +170,11 @@ const WorldCup = () => {
     fetchWCData();
     return () => clearInterval(timer);
   }, []);
+
+  // Note: previously this page rendered its own "premium hero" upgrade
+  // screen on 401/402. With the new freemium model the App-level
+  // <FreemiumGate> wraps the whole route and handles blur + modal, so
+  // we just let the page render normally and rely on the gate.
 
   return (
     <div className={`world-cup-v2 ${lang === 'ar' ? 'rtl' : ''}`}>

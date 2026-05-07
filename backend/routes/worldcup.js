@@ -3,6 +3,16 @@ const router = express.Router();
 const { getForecast } = require('../services/weatherService');
 const { getDestinationPhoto } = require('../services/photoService');
 
+// World Cup endpoints are PUBLIC. Restriction is enforced on the
+// frontend via <FreemiumGate>: once a free user is locked, the entire
+// page renders blurred behind an upgrade modal — no API call leaks
+// premium content because the modal blocks pointer-events. We
+// intentionally don't gate the GET because:
+//   1. Browsing alone shouldn't consume one of the 3 free uses.
+//   2. SEO + landing-page links to /worldcup should still 200.
+// Mutating actions (none today, but future "join fan zone" etc.)
+// MUST add `requireAuth + requireFeature(...)` individually.
+
 const CITIES = [
   { 
     name: 'Casablanca', 

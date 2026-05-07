@@ -18,7 +18,9 @@ const PLAN_DEFS = {
     // price shown on the pricing page; not charged anywhere
     priceMonthly: 0,
     currency: 'USD',
-    features: ['planner'], // trip planner is allowed but capped by trialLimit
+    // Trial users can plan AND refine their 3 trips — the quota is enforced
+    // separately in `requireTripQuota` on the generate endpoint only.
+    features: ['planner', 'refine'],
     highlight: false
   },
   basic: {
@@ -50,7 +52,9 @@ const PLAN_DEFS = {
   }
 };
 
-// Features -> human-friendly label (used by the 402 error payload).
+// Features -> human-friendly label (used by the 402 error payload AND by the
+// Billing page's full feature matrix). The order here is the order shown on
+// the pricing page, so keep it user-facing-ordered.
 const FEATURE_LABELS = {
   planner: 'AI Trip Planner',
   refine: 'AI Refinement Chat',
@@ -59,6 +63,54 @@ const FEATURE_LABELS = {
   worldcup: 'World Cup 2030 Companion',
   priority: 'Priority Generation'
 };
+
+// Stable, ordered list used by the admin checkbox grid and the FE feature
+// matrix. Adding a new feature is a one-line change here + wiring it into
+// the right `requireFeature(...)` call somewhere in the routes.
+const ALL_FEATURES = Object.keys(FEATURE_LABELS);
+const ALL_FEATURES_SET = new Set(ALL_FEATURES);
+
+// ---------------------------------------------------------------------------
+// Persisted overrides — applied on first require() of this module so every
+// downstream consumer (gates, FE pricing, admin) sees the admin's last edits
+// immediately, regardless of which route file is required first.
+// ---------------------------------------------------------------------------
+const fs = require('fs');
+const path = require('path');
+const PLAN_OVERRIDES_PATH = path.join(__dirname, '..', 'data', 'plan-overrides.json');
+
+const loadOverridesFromDisk = () => {
+  try {
+    if (!fs.existsSync(PLAN_OVERRIDES_PATH)) return {};
+    return JSON.parse(fs.readFileSync(PLAN_OVERRIDES_PATH, 'utf8') || '{}');
+  } catch (_) { return {}; }
+};
+
+const applyOverride = (id, patch) => {
+  if (!PLAN_DEFS[id] || !patch) return;
+  // Whitelist what an override may set. Everything else is ignored so a
+  // stale or hand-edited file can't corrupt the in-memory defs.
+  const safe = {};
+  if (typeof patch.priceMonthly === 'number' && patch.priceMonthly >= 0) safe.priceMonthly = patch.priceMonthly;
+  if (typeof patch.currency === 'string') safe.currency = patch.currency.toUpperCase().slice(0, 4);
+  if (typeof patch.name === 'string') safe.name = patch.name.slice(0, 80);
+  if (typeof patch.description === 'string') safe.description = patch.description.slice(0, 500);
+  if (typeof patch.highlight === 'boolean') safe.highlight = patch.highlight;
+  if (Array.isArray(patch.features)) {
+    safe.features = patch.features
+      .filter((f) => typeof f === 'string' && ALL_FEATURES_SET.has(f));
+  }
+  Object.assign(PLAN_DEFS[id], safe);
+};
+
+const reloadFromDisk = () => {
+  const o = loadOverridesFromDisk();
+  for (const id of Object.keys(o)) applyOverride(id, o[id]);
+};
+
+// Apply on module load so the very first request — even if it hits a route
+// file that was required before admin.js — already sees the admin's edits.
+reloadFromDisk();
 
 // ---------------------------------------------------------------------------
 // Public helpers
@@ -87,6 +139,43 @@ const userHasFeature = (user, feature) => {
   return !!PLAN_DEFS[plan]?.features?.includes(feature);
 };
 
+// ---------------------------------------------------------------------------
+// FREEMIUM model
+//
+// Every user starts with `trialLimit` (default 3) free uses spread across
+// ALL premium features (planner / refine / livemap / community / worldcup).
+// Paid plans bypass this counter entirely. Once `freeTripsUsed >= trialLimit`
+// the user is "freemium-locked": all premium pages still render but the FE
+// blurs them and the backend rejects mutating actions with a 402.
+//
+// We deliberately reuse the existing `freeTripsUsed` / `trialLimit` fields
+// instead of adding new ones — semantically they were already a per-user
+// usage counter, and reusing them avoids a Mongo migration.
+// ---------------------------------------------------------------------------
+
+const isPaidPlan = (planId) => planId && planId !== 'free';
+
+// Returns true when the user is on the free plan AND has burned all uses.
+// Admins and paid users are NEVER locked. Used by both the middleware (to
+// reject actions) and the FE (to blur pages + show the upgrade modal).
+const isFreemiumLocked = (user) => {
+  if (!user) return true;
+  if (user.isAdmin) return false;
+  if (isPaidPlan(effectivePlan(user))) return false;
+  const used = user.freeTripsUsed || 0;
+  const limit = user.trialLimit || 0;
+  return used >= limit;
+};
+
+// Atomic-ish increment of the freemium counter. We re-fetch the user and
+// save inside the middleware to keep things simple (Mongo single-doc
+// updates are atomic enough for our scale). Returns the new used count.
+const consumeFreemium = async (user) => {
+  user.freeTripsUsed = (user.freeTripsUsed || 0) + 1;
+  await user.save();
+  return user.freeTripsUsed;
+};
+
 // Paying tiers only (used by /api/payments/plans for the pricing page).
 const paidPlans = () => listPlans().filter((p) => p.id !== 'free');
 
@@ -103,37 +192,88 @@ const computePeriod = (user, plan) => {
   return { periodStart, periodEnd };
 };
 
-// Shape safe for the FE: plan state + trial counters + history dates.
-const publicSubscription = (user) => ({
-  plan: user.plan || 'free',
-  effectivePlan: effectivePlan(user),
-  planExpiresAt: user.planExpiresAt || null,
-  freeTripsUsed: user.freeTripsUsed || 0,
-  trialLimit: user.trialLimit || 0,
-  freeTripsRemaining: Math.max(0, (user.trialLimit || 0) - (user.freeTripsUsed || 0)),
-  features: PLAN_DEFS[effectivePlan(user)]?.features || [],
-  history: (user.subscriptionHistory || []).map((h) => ({
-    id: h._id,
-    plan: h.plan,
-    amount: h.amount,
-    currency: h.currency,
-    provider: h.provider,
-    periodStart: h.periodStart,
-    periodEnd: h.periodEnd,
-    status: h.status,
-    note: h.note,
-    createdAt: h.createdAt
-  }))
-});
+// Shape safe for the FE: plan state + freemium counters + history dates.
+const publicSubscription = (user) => {
+  const used = user.freeTripsUsed || 0;
+  const limit = user.trialLimit || 0;
+  const remaining = Math.max(0, limit - used);
+  const locked = isFreemiumLocked(user);
+  return {
+    plan: user.plan || 'free',
+    effectivePlan: effectivePlan(user),
+    planExpiresAt: user.planExpiresAt || null,
+    // Legacy field names kept for backwards compat with any code still
+    // reading `freeTripsRemaining`. The new freemium block below is the
+    // canonical source of truth for the FE.
+    freeTripsUsed: used,
+    trialLimit: limit,
+    freeTripsRemaining: remaining,
+    // The FE only needs to read `freemium.locked` to decide whether to
+    // blur a premium page + show the upgrade modal.
+    freemium: {
+      used,
+      limit,
+      remaining,
+      locked,
+      // Admins and active paid plans never decrement the counter, so
+      // the FE can show "Unlimited" for them instead of "0 left".
+      unlimited: !!user.isAdmin || isPaidPlan(effectivePlan(user))
+    },
+    features: PLAN_DEFS[effectivePlan(user)]?.features || [],
+    history: (user.subscriptionHistory || []).map((h) => ({
+      id: h._id,
+      plan: h.plan,
+      amount: h.amount,
+      currency: h.currency,
+      provider: h.provider,
+      periodStart: h.periodStart,
+      periodEnd: h.periodEnd,
+      status: h.status,
+      note: h.note,
+      createdAt: h.createdAt
+    }))
+  };
+};
+
+// Mutates PLAN_DEFS[id] with the given patch (validated) and persists every
+// override to disk so it survives restarts. Returns the updated plan def.
+const updatePlan = (id, patch) => {
+  if (!PLAN_DEFS[id]) throw new Error('Unknown plan');
+  applyOverride(id, patch);
+  const all = loadOverridesFromDisk();
+  all[id] = { ...(all[id] || {}), ...patch };
+  // Same whitelist on disk so the file can never store junk.
+  if (Array.isArray(patch.features)) {
+    all[id].features = patch.features.filter((f) => ALL_FEATURES_SET.has(f));
+  }
+  try {
+    if (!fs.existsSync(path.dirname(PLAN_OVERRIDES_PATH))) {
+      fs.mkdirSync(path.dirname(PLAN_OVERRIDES_PATH), { recursive: true });
+    }
+    fs.writeFileSync(PLAN_OVERRIDES_PATH, JSON.stringify(all, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Failed to persist plan override:', err.message);
+  }
+  return PLAN_DEFS[id];
+};
+
+const getOverrides = () => loadOverridesFromDisk();
 
 module.exports = {
   PLAN_DEFS,
   FEATURE_LABELS,
+  ALL_FEATURES,
   listPlans,
   paidPlans,
   getPlan,
   effectivePlan,
   userHasFeature,
+  isPaidPlan,
+  isFreemiumLocked,
+  consumeFreemium,
   computePeriod,
-  publicSubscription
+  publicSubscription,
+  updatePlan,
+  getOverrides,
+  reloadFromDisk
 };

@@ -1,0 +1,37 @@
+{
+  "basic": {
+    "priceMonthly": 2.99,
+    "currency": "USD",
+    "name": "Basic",
+    "description": "AI trip planner and AI refinement chat — unlimited.",
+    "highlight": false,
+    "features": [
+      "planner",
+      "worldcup",
+      "refine"
+    ]
+  },
+  "free": {
+    "priceMonthly": 0,
+    "currency": "USD",
+    "name": "Free Trial",
+    "description": "nothing else",
+    "highlight": false,
+    "features": [
+      "planner",
+      "community"
+    ]
+  },
+  "pro": {
+    "priceMonthly": 5.99,
+    "currency": "USD",
+    "name": "Pro",
+    "description": "Everything in Basic, plus Community Hubs and the Live Map."
+  },
+  "premium": {
+    "priceMonthly": 9.99,
+    "currency": "USD",
+    "name": "Premium",
+    "description": "All features, including the World Cup 2030 companion and priority generation."
+  }
+}

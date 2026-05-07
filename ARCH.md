@@ -18,7 +18,7 @@
 │                Express server (Node.js, port 5000)         │
 │  ┌────────────────────────────────────────────────────┐    │
 │  │ Routes  (auth, trips, livemap, chat, search,       │    │
-│  │          worldcup, admin)                          │    │
+│  │          worldcup, admin, payments, settings)      │    │
 │  └────────────────────────────────────────────────────┘    │
 │  ┌────────────────────────────────────────────────────┐    │
 │  │ Services  (orchestrator, ai, weather, poi, photo,  │    │
@@ -96,7 +96,8 @@ test project/
 ├─ backend/
 │  ├─ server.js              # Express + socket.io bootstrap
 │  ├─ models/                # Mongoose schemas
-│  ├─ routes/                # auth, trips, livemap, chat, search, worldcup, admin
+│  ├─ routes/                # auth, trips, livemap, chat, search, worldcup, admin, payments, settings
+│  ├─ middleware/            # planGate (requireAuth, requireFeature, requireTripQuota)
 │  └─ services/              # business logic (orchestrator, ai, weather, etc.)
 ├─ frontend/
 │  ├─ src/
@@ -245,7 +246,10 @@ The codebase deliberately keeps things small and idiomatic. The patterns below a
 | **State Container** | `tripStore` (Zustand) | Form data, current trip, auth, joined hubs and language live in one tiny store; no Redux boilerplate. |
 | **DTO / Mapper** | `aiService.generateItinerary` builds a `context` object specifically shaped for the prompt template | Prevents prompts from being coupled to internal model shape. |
 | **Optimistic UI** | Refine chat in `TripResults.jsx` | Local state updates immediately; the server later returns `updatedTrip` and Zustand replaces the trip. |
-| **Code-as-config** | `DEFAULTS` for prompts, `allocations` for budget | Domain knobs live in code first, can be edited at runtime via the admin UI when needed. |
+| **Code-as-config** | `DEFAULTS` for prompts, `allocations` for budget, `PLAN_DEFS` for tiers | Domain knobs live in code first, can be edited at runtime via the admin UI when needed. |
+| **Middleware Factory** | `requireFeature(feature)` in `middleware/planGate.js` returns a fresh middleware per feature | Same auth/plan logic reused on every gated route without repetition. |
+| **Specification / Policy Object** | `planService.userHasFeature(user, feature)` + `effectivePlan(user)` | Centralises "can this user do X?" so both the FE (`usePlan`) and BE (`requireFeature`) ask the same question and get the same answer. |
+| **Audit Log (append-only)** | `User.subscriptionHistory[]` | Every paid capture or admin grant pushes an immutable entry, used by Settings + Admin to show a purchase trail. |
 
 ---
 
@@ -253,8 +257,8 @@ The codebase deliberately keeps things small and idiomatic. The patterns below a
 
 User clicks **"Generate My Dream Trip"** on Step 4:
 
-1. `Loading.jsx` POSTs `formData` to `POST /api/trips/generate`.
-2. `routes/trips.js` calls `optionalAuth` (sets `req.user` if a JWT is present) then `plannerOrchestrator.generateFullTrip`.
+1. `Loading.jsx` POSTs `formData` to `POST /api/trips/generate` with the JWT.
+2. `routes/trips.js` runs `requireAuth` → loads the full user → `requireTripQuota` rejects with 402 if a free user exceeded `trialLimit`. Otherwise it calls `plannerOrchestrator.generateFullTrip` and, on success, `User.findByIdAndUpdate({ $inc: { freeTripsUsed: 1 } })`.
 3. The orchestrator runs the three external lookups in parallel.
 4. `weatherService.summarizeForecast` produces `weatherDaily[]` and the orchestrator computes `nights` + `breakdown`.
 5. `aiService.generateItinerary` resolves the `itinerary.generate` prompt via `promptService` and calls Groq.
@@ -268,6 +272,63 @@ User clicks **"Generate My Dream Trip"** on Step 4:
 
 ---
 
+## 7b. Billing & plan gating subsystem
+
+```
+┌─────────────────────────── Frontend ────────────────────────────┐
+│  /billing  ── Billing.jsx ── PayPal JS SDK ── Buttons            │
+│      │                                                           │
+│      │ create-order                       capture-order          │
+│      ▼                                       ▼                   │
+│  /settings ── Settings.jsx (profile / password / sub / delete)   │
+│  PlanGate / usePlan() — single source of truth in the UI         │
+│  Loading.jsx renders an "Upgrade" screen on 402                  │
+└──────────────────────────────────────────────────────────────────┘
+                    │ axios + JWT
+                    ▼
+┌─────────────────────────── Backend ─────────────────────────────┐
+│  routes/payments.js   │ /plans, /subscription, /checkout (mock), │
+│                       │ /receipt/:id                              │
+│  routes/settings.js   │ profile, password, delete                │
+│  routes/admin.js      │ /plans (PATCH features+price), grant /   │
+│                       │ revoke-trial / expire-plan                │
+│  middleware/planGate  │ requireAuth, requireFeature(f),          │
+│                       │ requireTripQuota                          │
+│  services/planService │ PLAN_DEFS, ALL_FEATURES, effectivePlan,  │
+│                       │ userHasFeature                            │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+The original PayPal sandbox client is gone (`paypalService.js` is now a deprecation stub) because the sandbox redirect forced testers to create a PayPal account, which made PFE demos painful. The replacement is a fully internal **mock checkout**:
+
+1. `POST /api/payments/checkout { plan }` — server-side only:
+   - validates the plan and that `priceMonthly > 0` (otherwise nudges the admin to set a price),
+   - mints `MOCK-<timestamp>-<rand>` as the order id,
+   - extends the user's `planExpiresAt` by 30 days (or stacks if the user is already on the same tier),
+   - appends a `subscriptionHistory` entry with `provider: 'mock'`, `status: 'completed'`,
+   - returns `{ subscription, historyId }` so the FE can immediately render a receipt.
+
+2. `GET /api/payments/receipt/:historyId` — returns a serialized receipt (buyer / seller / line items / totals / feature list). The frontend's `lib/receipt.js` builds a self-contained printable HTML page in a popup and auto-fires `window.print()`, so the user gets a PDF via the browser's "Save as PDF" without us shipping a PDF library.
+
+Receipts are also accessible from the purchase-history table (a **Receipt** button per row) for re-printing later.
+
+The single source of truth is `services/planService.js`:
+- **`PLAN_DEFS`** — id → `{ name, priceMonthly, currency, features[] }`. Mutable in-process so the admin's `PATCH /api/admin/plans/:id` is reflected immediately; persisted to `backend/data/plan-overrides.json` so price edits survive restarts.
+- **`effectivePlan(user)`** — collapses `(plan, planExpiresAt, isAdmin)` into one of `'free' | 'basic' | 'pro' | 'premium'`. Admins always resolve to `'premium'`.
+- **`userHasFeature(user, feature)`** — the policy object every gate consults.
+- **`publicSubscription(user)`** — the FE-safe shape returned by `/auth/me`, `/payments/subscription` and `/settings/me`.
+
+**Feature catalog & yes/no flags** — `services/planService.js` also exports:
+- `FEATURE_LABELS` — id → human label (`'planner'` → `'AI Trip Planner'`).
+- `ALL_FEATURES` — stable, ordered list of every feature id.
+
+The admin **Plans & Billing** tab fetches both `/api/admin/plans` and the public `/api/payments/plans` so the same label catalog drives the checkbox grid. When the admin ticks a feature on a plan, `PATCH /api/admin/plans/:id` is called with the new `features` array; the route filters every entry through `new Set(ALL_FEATURES)` so a typo can't accidentally unlock a non-existent feature anywhere. The Billing page renders **all** features on every plan card with a green ✓ "Yes" or grey ✗ "No" badge — read straight from `plan.features`.
+
+Admin (superadmin) bypasses everything:
+- The middleware short-circuits all gates when `req.user.isAdmin === true`.
+- The FE `usePlan()` hook returns the full feature list for admins regardless of `subscription`.
+- The admin **Plans & Billing** tab lets the superadmin: edit name / price / currency / description / highlight / **features (checkboxes)** for every tier; grant a plan, add trials, **revoke a trial** (`POST /users/:id/revoke-trial` caps `trialLimit` to current `freeTripsUsed`), or force-expire any user's plan.
+
 ## 8. Conventions & gotchas
 
 - **JWT** is parsed manually in each route file (`req.headers.authorization?.split(' ')[1]`); two helpers (`optionalAuth`, `authMiddleware`) handle the two cases.
@@ -277,6 +338,11 @@ User clicks **"Generate My Dream Trip"** on Step 4:
 - **socket.io rooms** are named after `ChatRoom._id`; presence + message dispatch reuse them.
 - **Strict JSON** from the LLM is enforced both via `response_format` and the system prompt; `cleanJsonResponse` adds a defensive parse step.
 - **Per-day weather** rendering tolerates legacy trips: components fall back to `trip.weatherDaily?.[idx]` when `day.weatherSummary` is missing.
+- **Plan trust** — never trust `req.user.plan` directly when checking access; always go through `planService.effectivePlan(user)` or `userHasFeature(user, f)` so an expired plan correctly degrades to `free`.
+- **Free trial counter** is incremented after a successful generation (not before) so a 500 from the AI doesn't eat the user's quota.
+- **Mock checkout is not idempotent on the client** — every call to `POST /api/payments/checkout` mints a new `MOCK-...` order id. The FE's "Buy" button is `disabled` while in flight (`busyId === plan.id`) to prevent double-click double-charge.
+- **Plan & feature overrides** persist in `backend/data/plan-overrides.json` (price + currency + name + description + features array + highlight). Delete the file to revert every tier to the in-code defaults in `planService.PLAN_DEFS`.
+- **Adding a new feature** is a one-line change in `planService.FEATURE_LABELS`. Both the admin checkbox grid and the Billing yes/no matrix render it automatically. Don't forget to wire the actual `requireFeature('myFeature')` somewhere — `ALL_FEATURES` only describes the catalog, not the gates.
 
 ---
 
@@ -290,6 +356,9 @@ User clicks **"Generate My Dream Trip"** on Step 4:
 | Show a new field on the Trip page | extend `Trip` schema → expose in orchestrator → render in `TripResults.jsx` / a Booking section |
 | Add a new socket event | declare in `server.js` or a service, consume in `lib/socket.js` listeners |
 | Add a new prompt | append a default in `promptService.DEFAULTS` and call it via `resolveForCall(key, ctx)` |
+| Gate a route behind a paid feature | `requireAuth, requireFeature('myFeature')` from `middleware/planGate.js` and add `myFeature` to the relevant tier in `planService.PLAN_DEFS` |
+| Add a new pricing tier | Add an entry to `PLAN_DEFS` (id, name, priceMonthly, currency, features). The Billing page, Settings snapshot and Admin Plans tab pick it up automatically. |
+| Use plan info in the FE | `import { usePlan } from 'components/Billing/PlanGate'` then `const { hasFeature } = usePlan()` — also wrap content with `<PlanGate feature="...">` to render an automatic upgrade card. |
 
 ---
 

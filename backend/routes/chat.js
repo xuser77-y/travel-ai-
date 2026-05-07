@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const ChatRoom = require('../models/ChatRoom');
 const User = require('../models/User');
+const { requireAuth, requireFeature } = require('../middleware/planGate');
 require('dotenv').config();
 
 // Required auth: blocks unauthenticated requests
@@ -63,8 +64,9 @@ router.get('/me/hubs', authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/chat/rooms/:id/join — persistent join
-router.post('/rooms/:id/join', authMiddleware, async (req, res) => {
+// POST /api/chat/rooms/:id/join — persistent join. Gated by the `community`
+// feature so free-tier users are redirected to the billing page.
+router.post('/rooms/:id/join', requireAuth, requireFeature('community'), async (req, res) => {
   try {
     const room = await ChatRoom.findById(req.params.id);
     if (!room) return res.status(404).json({ error: 'Room not found' });

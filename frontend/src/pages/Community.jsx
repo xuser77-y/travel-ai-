@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Send, Users, MapPin, Trophy, Globe2, LogOut, Lock, Sparkles, KeyRound } from 'lucide-react';
 import axios from 'axios';
 import useTripStore from '../stores/tripStore';
@@ -12,6 +12,13 @@ const API = 'http://localhost:5000';
 
 const Community = () => {
   const navigate = useNavigate();
+  // The TripResults "Join Chat" button now navigates here with
+  // location.state = { roomId, fromTripId }. Reading this lets us
+  // pre-select the trip's room even if `currentTrip` was lost from the
+  // store (e.g. after a hard reload). Falls back to the trip-room or
+  // global flow gracefully when state is empty (direct nav to /community).
+  const location = useLocation();
+  const navRoomId = location.state?.roomId || null;
   const toast = useToast();
   const confirm = useConfirm();
   const {
@@ -21,7 +28,8 @@ const Community = () => {
     joinedHubs,
     setJoinedHubs,
     addJoinedHub,
-    removeJoinedHub
+    removeJoinedHub,
+    refreshSubscription
   } = useTripStore();
 
   const [messages, setMessages] = useState([]);
@@ -56,13 +64,18 @@ const Community = () => {
           setJoinedHubs(hubsRes.data.joinedHubs);
         }
 
-        // Default selection: current trip room → first joined hub → first room
+        // Default selection priority:
+        //   1. Explicit roomId passed via navigation state (Join Chat button)
+        //   2. Current trip's chatRoom from the store
+        //   3. First room the user has joined
+        //   4. The global default room
+        const navRoom = navRoomId && roomsRes.data.find((r) => String(r._id) === String(navRoomId));
         const tripRoomId = currentTrip?.chatRoom?._id;
         const tripRoom = roomsRes.data.find((r) => r._id === tripRoomId);
         const serverHubs = hubsRes.data?.joinedHubs || joinedHubs;
         const firstJoined = roomsRes.data.find((r) => serverHubs.includes(String(r._id)));
         const fallback = roomsRes.data.find((r) => r.isGlobalDefault) || roomsRes.data[0];
-        setSelectedRoomId(tripRoom?._id || firstJoined?._id || fallback?._id || null);
+        setSelectedRoomId(navRoom?._id || tripRoom?._id || firstJoined?._id || fallback?._id || null);
       } catch (err) {
         console.error('Failed to fetch rooms:', err);
       }
@@ -70,7 +83,7 @@ const Community = () => {
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, currentTrip?.chatRoom?._id]);
+  }, [token, currentTrip?.chatRoom?._id, navRoomId]);
 
   const activeRoom = availableRooms.find((r) => r._id === selectedRoomId);
   const isJoined = !!selectedRoomId && joinedHubs.includes(String(selectedRoomId));
@@ -114,9 +127,24 @@ const Community = () => {
         }
       ]);
     };
+    // The backend now plan-gates `send_message`; if the user's plan
+    // doesn't unlock `community` it emits this error event back instead
+    // of broadcasting. Surface it as a toast and nudge to /billing.
+    const errHandler = (payload = {}) => {
+      const msg = payload.message || 'Message blocked.';
+      toast.error(msg);
+      if (payload.code === 'upgrade_required' && payload.upgradeUrl) {
+        // Soft redirect after a tick so the toast is visible.
+        setTimeout(() => { window.location.href = payload.upgradeUrl; }, 800);
+      }
+    };
     socket.on('receive_message', handler);
-    return () => socket.off('receive_message', handler);
-  }, [selectedRoomId, isJoined, user?.name]);
+    socket.on('send_message_error', errHandler);
+    return () => {
+      socket.off('receive_message', handler);
+      socket.off('send_message_error', errHandler);
+    };
+  }, [selectedRoomId, isJoined, user?.name, toast]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -130,6 +158,12 @@ const Community = () => {
       text: input
     });
     setInput('');
+    // Best-effort freemium counter refresh. The backend increments the
+    // counter inside the socket handler on success; we can't await that
+    // round-trip cheaply, so we just refetch the subscription a moment
+    // later. If the message was rejected, `send_message_error` already
+    // fired and `refreshSubscription` will return the unchanged value.
+    setTimeout(() => { refreshSubscription?.(); }, 350);
   };
 
   // Local member-count adjustment so the badge updates instantly without

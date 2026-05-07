@@ -104,7 +104,11 @@ const guestAuthorId = (() => {
 })();
 
 const LiveMap = () => {
-  const { user, language } = useTripStore();
+  const { user, language, token, refreshSubscription } = useTripStore();
+  // Used on every gated POST/DELETE — the livemap routes are now
+  // requireAuth + requireFeature('livemap'), so missing this header is
+  // why the FE was getting blanket 401s after the gating refactor.
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
   const toast = useToast();
   const confirm = useConfirm();
   const myAuthorId = user?._id || user?.id || guestAuthorId;
@@ -237,19 +241,38 @@ const LiveMap = () => {
     if (!loc) return;
     setPosting(true);
     try {
-      const res = await axios.post(`${API}/posts`, {
-        type: draftType,
-        message: draftMsg.trim(),
-        location: loc,
-        author: user?.name || 'Anonymous Traveler',
-        authorId: myAuthorId
-      });
+      const res = await axios.post(
+        `${API}/posts`,
+        {
+          type: draftType,
+          message: draftMsg.trim(),
+          location: loc,
+          author: user?.name || 'Anonymous Traveler',
+          authorId: myAuthorId
+        },
+        { headers: authHeaders }
+      );
       // Optimistic add (socket will also push)
       setPosts((prev) => [res.data, ...prev.filter((p) => p._id !== res.data._id)]);
       setDraftMsg('');
       setPickedPos(null);
+      // Refresh the freemium counter so the gate flips to "locked"
+      // immediately if this was the 3rd free use.
+      refreshSubscription?.();
     } catch (err) {
       console.error('Post failed:', err);
+      // Translate auth / plan errors so the user knows what to do, instead
+      // of a silent fail with a console-only "401".
+      const status = err.response?.status;
+      const data = err.response?.data;
+      if (status === 401) {
+        toast.error('Please sign in to post on the live map.');
+      } else if (status === 402) {
+        toast.error(`${data?.featureLabel || 'Live Map posts'} requires a paid plan. Opening Billing…`);
+        setTimeout(() => { window.location.href = '/billing'; }, 900);
+      } else {
+        toast.error(data?.error || 'Could not publish your post.');
+      }
     } finally {
       setPosting(false);
     }

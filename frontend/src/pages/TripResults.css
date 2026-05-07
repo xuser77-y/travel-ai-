@@ -142,7 +142,10 @@
 }
 
 .itinerary-header {
-  margin-bottom: 20px;
+  /* Spacing to the timeline below comes from the parent
+     `.results-main { gap: 20px }`. The old `margin-bottom: 20px` here
+     stacked on top of the parent gap, producing the visible empty band
+     between the day pills and the weather badge that the user reported. */
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -227,7 +230,10 @@
 .itinerary-timeline {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  /* Owns the spacing between the weather badge, transport hint and
+     the activity cards. Bumped from 4px → 12px now that WeatherBadge
+     no longer has its own margin-bottom. */
+  gap: 12px;
 }
 
 .transport-hint {
@@ -235,7 +241,8 @@
   padding: 10px 16px;
   border-radius: 10px;
   font-size: 0.85rem;
-  margin-bottom: 16px;
+  /* Spacing handled by `.itinerary-timeline gap` — removed
+     `margin-bottom: 16px` to stop double-stacking. */
   display: inline-block;
   color: var(--text-muted);
   border: 1px solid var(--border);

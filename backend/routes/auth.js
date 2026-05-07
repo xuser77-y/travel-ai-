@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const ChatRoom = require('../models/ChatRoom');
 const { hashPassword, verifyPassword, isHashed } = require('../services/password');
+const planService = require('../services/planService');
 require('dotenv').config();
 
 // Ensures the user is a member of every hub flagged as `isGlobalDefault`
@@ -65,7 +66,8 @@ const issueSession = async (user) => {
       name: user.name,
       email: user.email,
       isAdmin: !!user.isAdmin,
-      joinedHubs
+      joinedHubs,
+      subscription: planService.publicSubscription(user)
     }
   };
 };
@@ -187,7 +189,8 @@ router.get('/me', async (req, res) => {
       name: user.name,
       email: user.email,
       isAdmin: !!user.isAdmin,
-      joinedHubs: (user.joinedHubs || []).map((id) => id.toString())
+      joinedHubs: (user.joinedHubs || []).map((id) => id.toString()),
+      subscription: planService.publicSubscription(user)
     });
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });

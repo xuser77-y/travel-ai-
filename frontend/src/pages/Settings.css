@@ -1,0 +1,164 @@
+.settings-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+  color: var(--text);
+}
+
+.settings-header { text-align: center; margin-bottom: 32px; position: relative; }
+.settings-header h1 { margin: 0 0 6px; font-size: 2rem; }
+.settings-header p  { margin: 0; color: var(--text-muted); }
+
+.admin-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(234,179,8,0.10));
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px;
+  position: sticky;
+  top: 90px;
+}
+
+.settings-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.settings-tabs button:hover { background: rgba(255,255,255,0.05); }
+.settings-tabs button.active {
+  background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(234,179,8,0.10));
+  color: var(--text);
+}
+.settings-tabs button.danger { color: #dc2626; }
+.settings-tabs button.danger.active { background: rgba(239,68,68,0.10); }
+
+.settings-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  min-height: 360px;
+}
+.settings-panel h2 { margin: 0 0 18px; font-size: 1.4rem; }
+.settings-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.settings-panel input,
+.settings-panel textarea,
+.settings-panel select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  font-weight: 500;
+}
+.settings-panel input:focus,
+.settings-panel textarea:focus,
+.settings-panel select:focus { outline: 2px solid rgba(168,85,247,0.5); outline-offset: 0; }
+.settings-panel input:disabled { opacity: 0.6; }
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: white;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-primary.linkish { margin-top: 14px; }
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.danger-title { color: #dc2626; }
+.hint { color: var(--text-muted); font-size: 0.85rem; margin-top: 12px; }
+
+.sub-snapshot {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.sub-snapshot > div {
+  background: var(--glass-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sub-snapshot > div span {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.sub-snapshot > div strong { font-size: 1.05rem; }
+.sub-snapshot .cap { text-transform: capitalize; }
+
+@media (max-width: 700px) {
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-tabs { position: static; flex-direction: row; flex-wrap: wrap; }
+}

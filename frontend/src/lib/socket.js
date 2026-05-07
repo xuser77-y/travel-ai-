@@ -13,9 +13,16 @@ import { io } from 'socket.io-client';
 
 const API = 'http://localhost:5000';
 
+// The JWT is read once at boot — `setAuthToken()` reconnects when it
+// changes (login / logout) so the backend can plan-gate socket events.
+const initialToken = (() => {
+  try { return localStorage.getItem('token') || null; } catch (_) { return null; }
+})();
+
 export const socket = io(API, {
   autoConnect: true,
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  auth: { token: initialToken }
 });
 
 export const identifySocket = (user) => {
@@ -35,6 +42,14 @@ socket.on('connect', () => {
 export const setIdentity = (identity) => {
   lastIdentity = identity;
   socket.emit('identify', identity);
+};
+
+// Reconnects with the new JWT in the handshake so the backend's
+// `userFromSocket` can resolve the right user. Called on login + logout.
+export const setAuthToken = (token) => {
+  socket.auth = { token: token || null };
+  if (socket.connected) socket.disconnect();
+  socket.connect();
 };
 
 export default socket;

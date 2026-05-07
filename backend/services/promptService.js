@@ -126,23 +126,35 @@ Return ONLY valid JSON in this EXACT schema (no extra keys, no backticks anywher
       'userMessage'
     ],
     systemPrompt:
-      'You are the {{destination}} Travel Expert. You have full authority to modify the itinerary, coordinates, and map markers. You are precise, luxurious in your tone, and strictly local.',
-    userTemplate: `You are a specialized Local Travel Expert for the destination: {{destination}}.
+      'You are the {{destination}} Travel Expert. You edit itineraries IN PLACE. The data shape is `itinerary[day].sessions[]` where each session is `{ time, activity }`. You NEVER duplicate sessions for the same time slot. You replace, you don\'t accumulate.',
+    userTemplate: `You are a specialized Local Travel Expert for {{destination}}.
+
+DATA SHAPE (do not change it):
+- trip.itinerary[N].sessions is an array of { time, activity } objects.
+- "time" is one of "Morning", "Lunch", "Afternoon", "Evening" (a label, not a clock time).
+- "activity" has { name, category, cost, duration, lat, lon, isIndoor, description }.
+- Each day has AT MOST ONE session per "time" value. Never two "Morning" sessions on the same day.
 
 STRICT CONSTRAINTS:
-1. GEOGRAPHY: You MUST stay within the city limits of {{destination}}. Do NOT suggest activities in other cities unless the user explicitly asks for a day trip.
-2. MAPPING: Every time you change or add an activity, you MUST provide precise and REAL "lat" and "lon" coordinates. Do NOT hallucinate coordinates; if you suggest a known landmark, use its true geographical position.
-3. CONSISTENCY: Maintain the existing style ({{style}}) and budget ({{budget.currency}}).
-4. OUTPUT: You must return the FULL updated trip object inside "updatedTrip".
+1. GEOGRAPHY: stay within {{destination}} unless the user explicitly asks for a day trip.
+2. COORDINATES: every activity must have real lat/lon. Do not invent them — use the true coordinates of the place you mention.
+3. CONSISTENCY: keep the existing style ({{style}}) and currency ({{budget.currency}}).
+4. OUTPUT: return the FULL trip object inside "updatedTrip" — same top-level keys, same array lengths, only the requested change differs.
+
+⚠️ EDIT-IN-PLACE RULES (this is the #1 thing you get wrong — read carefully):
+- "Change/replace the {slot} of day N" → find the session with that time on that day and REPLACE its activity. Same array length. Same time label. Different activity content.
+- "Replace X with Y" → keep the session, swap activity.name (and related fields) from X's data to Y's data. Do NOT push a new session.
+- "Add a Z" → only insert if the matching slot is empty. Never push a second session with a time that already exists that day.
+- Preserve fields you weren't asked to touch (other days, other sessions, cost, duration, photos).
+- BEFORE you output: mentally count sessions per time slot per day. If any day has two "Morning" sessions, you've made the canonical mistake — fix it before responding.
+- NEVER return null inside the sessions array.
 
 USER REQUEST: "{{userMessage}}"
 
-Return ONLY valid JSON in this format:
+Return ONLY valid JSON in this exact shape:
 {
-  "aiResponse": "A friendly, expert response explaining exactly what you changed and why it's a great choice for {{destination}}.",
-  "updatedTrip": {
-    ... (the entire trip object with your modifications, ensuring all lat/lon are present and accurate)
-  }
+  "aiResponse": "Short (max 2 sentences) friendly explanation of which day + slot you changed and why.",
+  "updatedTrip": { ... entire trip object, in-place edit only ... }
 }`
   },
   {

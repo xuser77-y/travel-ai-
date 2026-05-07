@@ -6,6 +6,9 @@ const Groq = require('groq-sdk');
 const { generateFullTrip } = require('../services/plannerOrchestrator');
 const promptService = require('../services/promptService');
 const Trip = require('../models/Trip');
+const User = require('../models/User');
+const planService = require('../services/planService');
+const { requireAuth, requireFeature, requireTripQuota } = require('../middleware/planGate');
 
 // Optional auth: sets req.user if a valid token is present, otherwise continues
 const optionalAuth = (req, res, next) => {
@@ -33,12 +36,19 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// POST /api/trips/generate
-router.post('/generate', optionalAuth, async (req, res) => {
+// POST /api/trips/generate — now requires login + quota.
+// Free users are limited by `trialLimit`; paid tiers are unlimited.
+// `freeTripsUsed` increments only after a successful generation so a
+// crashed AI call doesn't eat the user's trial.
+router.post('/generate', requireAuth, requireTripQuota, async (req, res) => {
   try {
-    // Prefer userId from JWT, fallback to body for legacy/demo flows
-    const userId = req.user?.id || req.body.userId || null;
+    const userId = req.user._id.toString();
     const trip = await generateFullTrip(req.body, userId);
+
+    if (planService.effectivePlan(req.user) === 'free') {
+      await User.findByIdAndUpdate(userId, { $inc: { freeTripsUsed: 1 } });
+    }
+
     res.status(201).json(trip);
   } catch (error) {
     console.error('Trip generation error:', error.message);
@@ -89,21 +99,64 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 });
 
 // POST /api/trips/refine
-router.post('/refine', async (req, res) => {
+// Gated by the `refine` feature: the in-trip AI chat is what every user
+// hits to tweak their itinerary, so it MUST go through the plan gate or
+// unchecking `refine` from a tier in the admin dashboard does nothing.
+// (Bug fix: the route used to be wide open and ignored the checkbox grid.)
+router.post('/refine', requireAuth, requireFeature('refine'), async (req, res) => {
   const { currentTrip, userMessage } = req.body;
   const { refineItinerary } = require('../services/aiService');
-  
+
   try {
     const result = await refineItinerary(currentTrip, userMessage);
     if (!result) throw new Error('Refinement failed');
-    
-    // Optional: Save the updated trip to DB
-    if (currentTrip._id) {
-      await Trip.findByIdAndUpdate(currentTrip._id, result.updatedTrip);
+
+    // Persist + reload. The LLM response can omit `_id`, `userId`,
+    // `chatRoom`, `createdAt` etc. (it doesn't see them as part of the
+    // user-visible trip). If we returned `result.updatedTrip` directly,
+    // the FE store would lose the _id → next refine call sends the trip
+    // without _id → no DB save → user sees "changes vanish on refresh".
+    //
+    // We also strip `_id` from the patch BEFORE the update — Mongo
+    // refuses to mutate immutable fields like `_id`, and Mongoose throws
+    // when it sees one in the body of findByIdAndUpdate.
+    let savedTrip = null;
+    if (currentTrip?._id) {
+      const patch = { ...result.updatedTrip };
+      delete patch._id;
+      delete patch.userId;
+      delete patch.createdAt;
+      delete patch.updatedAt;
+      delete patch.__v;
+
+      // `new: true` returns the post-update doc; `populate('chatRoom')`
+      // matches what GET /trips/:id returns so the FE re-render is
+      // identical to a hard refresh — but instant.
+      savedTrip = await Trip.findByIdAndUpdate(
+        currentTrip._id,
+        { $set: patch },
+        { new: true }
+      );
+      if (savedTrip) {
+        savedTrip = await Trip.findById(savedTrip._id).populate('chatRoom');
+      }
     }
-    
-    res.json(result);
+
+    // Freemium: free users burn one of their 3 uses per successful refine.
+    // Done AFTER the AI call so a model failure doesn't eat their quota.
+    if (planService.effectivePlan(req.user) === 'free' && !req.user.isAdmin) {
+      await User.findByIdAndUpdate(req.user._id, { $inc: { freeTripsUsed: 1 } });
+    }
+
+    // Always hand the FE a *complete* trip object. Falling back to the
+    // LLM's payload only when there is no _id (very old trips that
+    // pre-date persistence).
+    res.json({
+      aiResponse: result.aiResponse,
+      updatedTrip: savedTrip || result.updatedTrip
+    });
   } catch (error) {
+    console.error('Refine error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

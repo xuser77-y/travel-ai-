@@ -5,11 +5,12 @@ import {
   Shield, Users, Wifi, MapPinned, MessagesSquare, Radio, Activity, BarChart3,
   Trash2, ShieldCheck, ShieldOff, Ban, Search, RefreshCw, AlertTriangle, ArrowLeft,
   Key, Eye, X, Pencil, Save, Calendar, Clock, BookOpen, RotateCcw, Lock, Sparkles,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, CreditCard
 } from 'lucide-react';
 import useTripStore from '../stores/tripStore';
 import socket from '../lib/socket';
 import { useToast } from '../components/UI/Toast';
+import AdminPlans from './AdminPlans';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Admin.css';
 
@@ -43,7 +44,17 @@ const Admin = () => {
   const confirm = useConfirm();
   const { user, token } = useTripStore();
 
-  const [section, setSection] = useState('overview');
+  // Persist the active admin section across reloads — admins are typically
+  // monitoring one tab (e.g. "Users" or "Plans") and re-loading shouldn't
+  // bounce them back to Overview.
+  const [section, setSectionState] = useState(() => {
+    try { return localStorage.getItem('travelai_admin_section') || 'overview'; }
+    catch { return 'overview'; }
+  });
+  const setSection = (s) => {
+    setSectionState(s);
+    try { localStorage.setItem('travelai_admin_section', s); } catch { /* ignore */ }
+  };
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState({ items: [], total: 0, page: 1 });
   const [userQuery, setUserQuery] = useState('');
@@ -453,7 +464,8 @@ const Admin = () => {
     { id: 'rooms', label: 'Hubs', icon: MessagesSquare },
     { id: 'liveposts', label: 'Live Posts', icon: Radio },
     { id: 'apiusage', label: 'API Usage', icon: BarChart3 },
-    { id: 'prompts', label: 'AI Prompts', icon: BookOpen }
+    { id: 'prompts', label: 'AI Prompts', icon: BookOpen },
+    { id: 'plans', label: 'Plans & Billing', icon: CreditCard }
   ];
 
   return (
@@ -559,6 +571,10 @@ const Admin = () => {
               onRefresh={refreshApiUsage}
               onReset={resetApiUsage}
             />
+          )}
+
+          {section === 'plans' && (
+            <AdminPlans token={token} toast={toast} />
           )}
 
           {section === 'prompts' && (

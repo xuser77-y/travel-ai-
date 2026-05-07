@@ -1,26 +1,69 @@
 const axios = require('axios');
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Errors that are worth retrying once — usually a flaky connection or DNS
+// hiccup, not a real upstream outage. ECONNRESET in particular fires when
+// the server closes the keep-alive socket while we were waiting on it.
+const TRANSIENT_CODES = new Set([
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'EAI_AGAIN',
+  'ECONNABORTED',
+  'EPIPE'
+]);
+
+const isTransient = (err) => {
+  const code = err?.code || err?.cause?.code;
+  if (TRANSIENT_CODES.has(code)) return true;
+  // Axios surfaces its own "timeout exceeded" as message, not code.
+  if (err?.message && /timeout/i.test(err.message)) return true;
+  // 5xx from upstream is retryable too.
+  const status = err?.response?.status;
+  return status >= 500 && status < 600;
+};
+
 /**
  * Open-Meteo daily forecast.
  * Returns the raw `daily` block: { time[], weathercode[], temperature_2m_max[], temperature_2m_min[], precipitation_sum[] }
+ *
+ * Resilient against transient network errors (ECONNRESET, ETIMEDOUT, 5xx)
+ * with a single backoff retry. On terminal failure, returns null and logs
+ * a single concise warning so the trip flow degrades gracefully (the
+ * itinerary just goes out without per-day weather verdicts).
  */
 const getForecast = async (lat, lon, startDate, endDate) => {
-  try {
-    const response = await axios.get('https://api.open-meteo.com/v1/forecast', {
-      params: {
-        latitude: lat,
-        longitude: lon,
-        daily: 'weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max',
-        timezone: 'auto',
-        start_date: startDate.split('T')[0],
-        end_date: endDate.split('T')[0]
+  const params = {
+    latitude: lat,
+    longitude: lon,
+    daily: 'weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max',
+    timezone: 'auto',
+    start_date: startDate.split('T')[0],
+    end_date: endDate.split('T')[0]
+  };
+
+  let lastErr = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await axios.get('https://api.open-meteo.com/v1/forecast', {
+        params,
+        timeout: 8000 // open-meteo is fast; 8s is generous
+      });
+      return response.data.daily;
+    } catch (error) {
+      lastErr = error;
+      if (attempt === 0 && isTransient(error)) {
+        await sleep(500);
+        continue;
       }
-    });
-    return response.data.daily;
-  } catch (error) {
-    console.error('Error fetching weather:', error.message);
-    return null;
+      break;
+    }
   }
+
+  // Quiet, single-line warning instead of a noisy stack — the caller
+  // already handles `null` by skipping the weather summary.
+  console.warn(`Weather fetch failed (${lastErr?.code || lastErr?.message || 'unknown'}); itinerary will be generated without forecast.`);
+  return null;
 };
 
 // WMO weather code -> { label, icon, isPrecip, isSevere }

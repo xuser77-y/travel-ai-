@@ -39,8 +39,10 @@ router.get('/posts', async (req, res) => {
   }
 });
 
-// POST /api/livemap/posts
-router.post('/posts', async (req, res) => {
+// POST /api/livemap/posts — gated by the `livemap` feature so only Pro+
+// subscribers (and admins) can drop pins. Reading posts is still public.
+const { requireAuth, requireFeature } = require('../middleware/planGate');
+router.post('/posts', requireAuth, requireFeature('livemap'), async (req, res) => {
   try {
     const { type, message, location, author, authorId } = req.body;
     if (!type || !message || !location?.lat || !location?.lon) {
@@ -59,6 +61,14 @@ router.post('/posts', async (req, res) => {
     // Broadcast via socket if available
     const io = req.app.get('io');
     if (io) io.emit('livemap:new_post', post);
+
+    // Freemium counter — free users burn one use per successful livemap
+    // post. Done after `LivePost.create` so a DB error doesn't waste a use.
+    const planService = require('../services/planService');
+    const User = require('../models/User');
+    if (planService.effectivePlan(req.user) === 'free' && !req.user.isAdmin) {
+      await User.findByIdAndUpdate(req.user._id, { $inc: { freeTripsUsed: 1 } });
+    }
 
     res.status(201).json(post);
   } catch (err) {

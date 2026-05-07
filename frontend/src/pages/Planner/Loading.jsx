@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Globe from 'react-globe.gl';
 import axios from 'axios';
 import useTripStore from '../../stores/tripStore';
-import { Sparkles, MapPin, Calendar, Wallet, Heart, Check, AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Sparkles, MapPin, Calendar, Wallet, Heart, Check, AlertTriangle, RefreshCw, ArrowLeft, Lock } from 'lucide-react';
 import './Loading.css';
 
 const STEPS = [
@@ -19,12 +19,23 @@ const Loading = () => {
   const { formData, setTrip, setGenerating, token } = useTripStore();
   const [activeStep, setActiveStep] = useState(0);
   const [error, setError] = useState(null);
+  const [upgradeInfo, setUpgradeInfo] = useState(null);
   const [done, setDone] = useState(false);
   const globeRef = useRef();
+  // React 18 StrictMode mounts effects twice in dev. Without this guard we
+  // were firing POST /generate twice → 2 trips saved + 2 freemium uses
+  // burned per click, which is why the user was hitting "0 free" after a
+  // single create+refine and finding duplicate trips on the dashboard.
+  // The ref persists across the unmount/remount cycle so the second call
+  // is silently skipped without losing UX progress on the first.
+  const generationStarted = useRef(false);
   const isDarkMode = !document.body.classList.contains('light-mode');
 
   // Progress timer (advances visually while API call is in flight)
   useEffect(() => {
+    if (generationStarted.current) return;
+    generationStarted.current = true;
+
     if (globeRef.current) {
       globeRef.current.controls().autoRotate = true;
       globeRef.current.controls().autoRotateSpeed = 1.5;
@@ -60,6 +71,17 @@ const Loading = () => {
         setTimeout(finishUp, 1500);
       } catch (err) {
         console.error('Generation failed:', err);
+        const status = err.response?.status;
+        if (status === 401) {
+          setError('You need to sign in to generate a trip.');
+          setGenerating(false);
+          return;
+        }
+        if (status === 402) {
+          setUpgradeInfo(err.response?.data || { error: 'Upgrade required' });
+          setGenerating(false);
+          return;
+        }
         setError(err.response?.data?.error || 'AI generation failed. Please check your connection or try again.');
         setGenerating(false);
       }
@@ -68,6 +90,35 @@ const Loading = () => {
     generateTrip();
     return () => clearInterval(stepInterval);
   }, []);
+
+  if (upgradeInfo) {
+    const used = upgradeInfo.freeTripsUsed ?? 0;
+    const limit = upgradeInfo.trialLimit ?? 0;
+    return (
+      <div className="loading-screen">
+        <div className="loading-error">
+          <div className="err-icon" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.2), rgba(234,179,8,0.15))' }}>
+            <Lock size={28} />
+          </div>
+          <h2>You've used your free trial</h2>
+          <p>
+            {limit > 0
+              ? `You've used ${used} of ${limit} free trip generations.`
+              : 'This feature requires a paid plan.'}
+            &nbsp;Upgrade to keep planning unlimited trips.
+          </p>
+          <div className="err-actions">
+            <button className="btn-secondary" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft size={16} /> My Trips
+            </button>
+            <button className="btn-primary" onClick={() => navigate('/billing')}>
+              <Sparkles size={16} /> See plans
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (

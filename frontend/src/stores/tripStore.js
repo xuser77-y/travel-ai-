@@ -23,7 +23,30 @@ const persistJoinedHubs = (ids) => {
   }
 };
 
-const useTripStore = create((set) => ({
+// Tiny helpers for the UI prefs we want to survive a reload (theme +
+// language). Kept inline so a quota error or disabled storage just
+// silently falls back to the defaults rather than crashing the app.
+const readPref = (key, fallback) => {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v;
+  } catch { return fallback; }
+};
+const writePref = (key, value) => {
+  try { localStorage.setItem(key, String(value)); } catch { /* ignore */ }
+};
+
+// Hydrate UI prefs from localStorage so the very first render uses the
+// user's last choice — no flash of the wrong theme on reload.
+const initialLanguage = readPref('travelai_lang', 'en');
+const initialDarkMode = readPref('travelai_theme', 'dark') !== 'light';
+// Apply theme class synchronously before React paints.
+if (typeof document !== 'undefined') {
+  if (initialDarkMode) document.body.classList.remove('light-mode');
+  else document.body.classList.add('light-mode');
+}
+
+const useTripStore = create((set, get) => ({
   // Form Data
   formData: {
     destination: { name: '', lat: null, lon: null },
@@ -38,8 +61,8 @@ const useTripStore = create((set) => ({
   // UI State
   step: 1,
   isGenerating: false,
-  language: 'en',
-  isDarkMode: true,
+  language: initialLanguage,
+  isDarkMode: initialDarkMode,
   
   // Results
   currentTrip: null,
@@ -70,6 +93,41 @@ const useTripStore = create((set) => ({
     else localStorage.removeItem('travelai_user');
     set({ user });
   },
+
+  // Replaces just the subscription block on the cached user — used by the
+  // Billing and Settings pages after a PayPal capture or admin grant.
+  setSubscription: (subscription) => set((state) => {
+    if (!state.user) return state;
+    const next = { ...state.user, subscription };
+    localStorage.setItem('travelai_user', JSON.stringify(next));
+    return { user: next };
+  }),
+
+  // Re-fetches the freemium counter + plan state from the backend.
+  // Called after every action that consumes a free use (refine,
+  // livemap post, community message, trip generate) so the
+  // <FreemiumGate> overlay flips to "locked" the moment the 3rd use
+  // is consumed — without forcing the user to reload the page.
+  // Errors are swallowed: this is a best-effort refresh, the next
+  // /me call on a navigation will eventually correct any drift.
+  refreshSubscription: async () => {
+    const { token } = get();
+    if (!token) return;
+    try {
+      const res = await fetch('http://localhost:5000/api/payments/subscription', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const subscription = await res.json();
+      set((state) => {
+        if (!state.user) return state;
+        const next = { ...state.user, subscription };
+        localStorage.setItem('travelai_user', JSON.stringify(next));
+        return { user: next };
+      });
+    } catch (_) { /* network — ignore */ }
+  },
+
   setFormData: (data) => set((state) => ({ 
     formData: { ...state.formData, ...data } 
   })),
@@ -101,10 +159,14 @@ const useTripStore = create((set) => ({
 
   setTrip: (trip) => set({ currentTrip: trip }),
   setGenerating: (status) => set({ isGenerating: status }),
-  setLanguage: (lang) => set({ language: lang }),
+  setLanguage: (lang) => {
+    writePref('travelai_lang', lang);
+    set({ language: lang });
+  },
   toggleDarkMode: () => set((state) => {
     const newVal = !state.isDarkMode;
     document.body.classList.toggle('light-mode', !newVal);
+    writePref('travelai_theme', newVal ? 'dark' : 'light');
     return { isDarkMode: newVal };
   }),
 

@@ -32,6 +32,10 @@ const photoCache = {
  */
 
 let circuitBreakerUntil = 0; // epoch ms; while > Date.now(), skip network calls
+let breakerWarned = false;   // log the breaker-open warning once per window
+// In-flight promise registry: dedupes concurrent lookups for the same query
+// so two parallel trip generations don't both hit the network and both log.
+const inFlight = new Map();
 
 // Curated Pexels image IDs that are known-good landscape shots. We return
 // direct `images.pexels.com` URLs (no DNS on api.pexels.com needed).
@@ -60,6 +64,21 @@ const isNetworkFailure = (err) => {
          code === 'ETIMEDOUT' || code === 'ENETUNREACH';
 };
 
+// Wait helper for retry backoff.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// One Pexels HTTP attempt. Throws on failure so the caller can retry.
+const fetchPexelsOnce = async (apiKey, query) => {
+  const response = await axios.get('https://api.pexels.com/v1/search', {
+    params: { query: `${query} city landscape`, per_page: 1, orientation: 'landscape' },
+    headers: { Authorization: apiKey },
+    // 12s covers slow DNS on residential ISPs (e.g. peak hours in Morocco)
+    // without making the user wait forever for a non-critical asset.
+    timeout: 12000
+  });
+  return response.data?.photos?.[0]?.src?.large2x || null;
+};
+
 const getDestinationPhoto = async (query) => {
   const cacheKey = `photo:${(query || '').toLowerCase()}`;
   const cached = photoCache.get(cacheKey);
@@ -77,31 +96,64 @@ const getDestinationPhoto = async (query) => {
   if (Date.now() < circuitBreakerUntil) {
     return fallback;
   }
-
-  try {
-    const response = await axios.get('https://api.pexels.com/v1/search', {
-      params: { query: `${query} city landscape`, per_page: 1, orientation: 'landscape' },
-      headers: { Authorization: apiKey },
-      timeout: 6000
-    });
-    const url = response.data?.photos?.[0]?.src?.large2x;
-    if (url) {
-      photoCache.set(cacheKey, url);
-      return url;
-    }
-  } catch (error) {
-    if (isNetworkFailure(error)) {
-      // DNS / offline — trip the breaker for 10 min and stop logging noise.
-      circuitBreakerUntil = Date.now() + 10 * 60 * 1000;
-      console.warn(`Pexels unreachable (${error.code || error.message}); using local fallback for 10 min.`);
-    } else {
-      console.error('Pexels API Error:', error.message);
-    }
+  // Breaker just expired — re-arm the warning gate so we get one log line
+  // if the network is still down on the next attempt.
+  if (breakerWarned && Date.now() >= circuitBreakerUntil) {
+    breakerWarned = false;
   }
 
-  // Cache the fallback briefly so a retry cycle doesn't re-spam the API.
-  photoCache.set(cacheKey, fallback, 60 * 30); // 30 min
-  return fallback;
+  // Dedupe concurrent calls for the same destination — two parallel trip
+  // generations would otherwise both fire (and both log on failure).
+  if (inFlight.has(cacheKey)) {
+    return inFlight.get(cacheKey);
+  }
+
+  const lookup = (async () => {
+    let lastErr = null;
+    // One quick retry for transient flakes (ECONNRESET / EAI_AGAIN) before
+    // we declare the API down. ENOTFOUND is a hard DNS failure → no retry.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const url = await fetchPexelsOnce(apiKey, query);
+        if (url) {
+          photoCache.set(cacheKey, url);
+          return url;
+        }
+        // 200 OK but no photos — treat as "no result", don't retry.
+        break;
+      } catch (error) {
+        lastErr = error;
+        const code = error?.code || error?.cause?.code;
+        // Hard DNS failure or already-final error → don't waste a retry.
+        if (code === 'ENOTFOUND' || code === 'ENETUNREACH' || attempt === 1) break;
+        await sleep(400);
+      }
+    }
+
+    if (lastErr) {
+      if (isNetworkFailure(lastErr)) {
+        // DNS / offline — trip the breaker for 10 min and log ONCE.
+        circuitBreakerUntil = Date.now() + 10 * 60 * 1000;
+        if (!breakerWarned) {
+          breakerWarned = true;
+          console.warn(`Pexels unreachable (${lastErr.code || lastErr.message}); using local fallback for 10 min.`);
+        }
+      } else {
+        console.error('Pexels API Error:', lastErr.message);
+      }
+    }
+
+    // Cache the fallback briefly so a retry cycle doesn't re-spam the API.
+    photoCache.set(cacheKey, fallback, 60 * 30); // 30 min
+    return fallback;
+  })();
+
+  inFlight.set(cacheKey, lookup);
+  try {
+    return await lookup;
+  } finally {
+    inFlight.delete(cacheKey);
+  }
 };
 
 module.exports = { getDestinationPhoto };

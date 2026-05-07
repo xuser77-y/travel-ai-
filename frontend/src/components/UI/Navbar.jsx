@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Globe, Moon, Sun, User, LogOut, Menu, X, Trophy,
-  LayoutDashboard, Settings as SettingsIcon, Shield
+  LayoutDashboard, Settings as SettingsIcon, Shield, CreditCard, Sparkles
 } from 'lucide-react';
 import useTripStore from '../../stores/tripStore';
 import './Navbar.css';
@@ -11,6 +11,11 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode, toggleDarkMode, language, setLanguage, user, logout } = useTripStore();
+  // Note: nav links are intentionally always visible (freemium UX).
+  // Restriction happens INSIDE each premium page via <FreemiumGate>:
+  // free users still see the page but it's blurred + an upgrade modal
+  // is shown on top. This matches the spec — "All premium features
+  // remain visible in the navbar but become restricted".
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -114,6 +119,26 @@ const Navbar = () => {
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
+          {/* Freemium counter pill — shows the user how many free uses
+              they have left across all premium features. Hidden for
+              admins and paid plans (they're unlimited). Clicking it
+              jumps to /billing for an easy upgrade path. */}
+          {user?.subscription?.freemium && !user.subscription.freemium.unlimited && (
+            <Link
+              to="/billing"
+              className={`freemium-pill ${user.subscription.freemium.locked ? 'locked' : ''}`}
+              title={user.subscription.freemium.locked
+                ? 'You\'ve used all your free explorations. Upgrade to continue.'
+                : `${user.subscription.freemium.remaining} free explorations left`
+              }
+            >
+              <Sparkles size={13} />
+              {user.subscription.freemium.locked
+                ? 'Upgrade'
+                : `${user.subscription.freemium.remaining}/${user.subscription.freemium.limit} free`}
+            </Link>
+          )}
+
           {user ? (
             <div className="user-menu-wrapper" ref={userRef}>
               <button
@@ -133,6 +158,7 @@ const Navbar = () => {
                   </div>
                   <div className="dropdown-links">
                     <Link to="/dashboard"><LayoutDashboard size={16} /> {t.dashboard}</Link>
+                    <Link to="/billing"><CreditCard size={16} /> Billing &amp; Plan</Link>
                     <Link to="/settings"><SettingsIcon size={16} /> {t.settings}</Link>
                     {user.isAdmin && (
                       <Link to="/admin" className="admin-link">
