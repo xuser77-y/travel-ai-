@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Check, X, Sparkles, ShieldCheck, Crown, Star, Download, Loader2, FileText, CreditCard } from 'lucide-react';
 import useTripStore from '../stores/tripStore';
 import { useToast } from '../components/UI/Toast';
-import { openReceiptWindow } from '../lib/receipt';
+import { fetchAndDownloadReceipt } from '../lib/receiptPdf';
+import PaymentSuccessModal from '../components/Billing/PaymentSuccessModal';
 import './Billing.css';
 
 const API = 'http://localhost:5000';
@@ -100,6 +101,16 @@ const Billing = () => {
   const [provider, setProvider] = useState('mock');
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  // React 18 StrictMode mounts effects twice in dev. Without this guard the
+  // Stripe `finalize` effect below would fire twice, showing TWO success
+  // modals / downloading two receipts. We dedupe by session_id so any
+  // subsequent payment in the same tab still works.
+  const processedSessionsRef = useRef(new Set());
+
+  // Post-payment modal state — drives <PaymentSuccessModal />. We populate
+  // `successInfo` after a confirmed payment (mock or Stripe) and the modal
+  // gives the user the choice to download a real PDF receipt or skip.
+  const [successInfo, setSuccessInfo] = useState(null); // { historyId, planName, amount }
 
   useEffect(() => {
     if (!token) { navigate('/login'); return; }
@@ -151,6 +162,12 @@ const Billing = () => {
       return;
     }
     if (stripeFlag === 'success' && sessionId) {
+      // StrictMode dedupe — see ref declaration above.
+      if (processedSessionsRef.current.has(sessionId)) {
+        cleanUrl();
+        return;
+      }
+      processedSessionsRef.current.add(sessionId);
       (async () => {
         try {
           const { data } = await axios.post(
@@ -164,7 +181,13 @@ const Billing = () => {
               ? 'Subscription already activated.'
               : 'Payment confirmed — subscription activated!'
           );
-          openReceiptWindow(API, token, data.historyId);
+          // Show the success modal instead of auto-opening a receipt.
+          // The user can choose to download the PDF or skip.
+          setSuccessInfo({
+            historyId: data.historyId,
+            planName: data.planName || data.subscription?.plan || 'paid',
+            amount: data.amountLabel || null
+          });
           fetchAll();
         } catch (err) {
           toast.error(err.response?.data?.error || 'Could not finalize Stripe payment');
@@ -201,7 +224,13 @@ const Billing = () => {
       );
       setSubscription(data.subscription);
       toast.success(`You're now on the ${plan.name} plan!`);
-      openReceiptWindow(API, token, data.historyId);
+      setSuccessInfo({
+        historyId: data.historyId,
+        planName: plan.name,
+        amount: plan.priceMonthly
+          ? `${plan.currency || currency} ${plan.priceMonthly}`
+          : null
+      });
       fetchAll();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Checkout failed');
@@ -210,7 +239,28 @@ const Billing = () => {
     }
   };
 
-  const downloadReceipt = (historyId) => openReceiptWindow(API, token, historyId);
+  // Direct PDF download for the history table — no modal, the user already
+  // knows what they want. Errors surface as a toast.
+  const downloadReceipt = async (historyId) => {
+    try {
+      await fetchAndDownloadReceipt(API, token, historyId);
+    } catch (err) {
+      console.error('Receipt error:', err);
+      toast.error('Could not generate the receipt PDF.');
+    }
+  };
+
+  // Used by the success modal's primary button. Same helper, but we let
+  // the modal manage its own loading state so the button can show a spinner.
+  const handleDownloadFromModal = async () => {
+    if (!successInfo?.historyId) return;
+    try {
+      await fetchAndDownloadReceipt(API, token, successInfo.historyId);
+    } catch (err) {
+      console.error('Receipt error:', err);
+      toast.error('Could not generate the receipt PDF.');
+    }
+  };
 
   const currentPlan = user?.subscription?.effectivePlan || user?.subscription?.plan || 'free';
   const currency = useMemo(
@@ -271,7 +321,7 @@ const Billing = () => {
             <>
               <strong>Sandbox mode</strong> — no real charge is made. Clicking
               “Buy” simulates a successful payment, activates the plan for 30
-              days, and opens a printable receipt you can save as PDF.
+              days, and lets you download a PDF receipt.
             </>
           )}
         </span>
@@ -302,7 +352,7 @@ const Billing = () => {
                     <button
                       className="history-receipt-btn"
                       onClick={() => downloadReceipt(h.id)}
-                      title="Open the receipt and save as PDF"
+                      title="Download the receipt as PDF"
                     >
                       <Download size={12} /> Receipt
                     </button>
@@ -317,6 +367,14 @@ const Billing = () => {
       <div className="billing-footer">
         <Link to="/settings" className="link-muted">Manage account →</Link>
       </div>
+
+      <PaymentSuccessModal
+        open={!!successInfo}
+        planName={successInfo?.planName}
+        amount={successInfo?.amount}
+        onDownload={handleDownloadFromModal}
+        onClose={() => setSuccessInfo(null)}
+      />
     </div>
   );
 };

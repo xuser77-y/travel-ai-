@@ -1,5 +1,14 @@
 const axios = require('axios');
+const http = require('http');
+const https = require('https');
 require('dotenv').config();
+
+// Force IPv4-only DNS lookups. On many Windows boxes (and some Moroccan
+// ISPs) IPv6 resolution for `api.pexels.com` returns NXDOMAIN even when
+// IPv4 works fine — that was the recurring `ENOTFOUND` we kept seeing.
+// `family: 4` makes Node skip the AAAA lookup and go straight to A.
+const ipv4HttpAgent = new http.Agent({ family: 4, keepAlive: true });
+const ipv4HttpsAgent = new https.Agent({ family: 4, keepAlive: true });
 
 // Tiny inline TTL cache — avoids pulling node-cache as a dependency.
 const photoCacheStore = new Map(); // key -> { value, expiresAt }
@@ -72,6 +81,9 @@ const fetchPexelsOnce = async (apiKey, query) => {
   const response = await axios.get('https://api.pexels.com/v1/search', {
     params: { query: `${query} city landscape`, per_page: 1, orientation: 'landscape' },
     headers: { Authorization: apiKey },
+    // IPv4-only agents avoid the AAAA-lookup `ENOTFOUND` failure mode.
+    httpAgent: ipv4HttpAgent,
+    httpsAgent: ipv4HttpsAgent,
     // 12s covers slow DNS on residential ISPs (e.g. peak hours in Morocco)
     // without making the user wait forever for a non-critical asset.
     timeout: 12000

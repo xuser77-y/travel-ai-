@@ -13,6 +13,24 @@ const computeNights = (start, end) => {
   return Math.max(1, diff);
 };
 
+// Maximum trip length the orchestrator will honour. Mirrors the cap in
+// `Step2Dates.jsx` (frontend). Defends against direct API callers and old
+// cached form data — without this guard the LLM would silently truncate
+// long itineraries (a 24-day trip became 8 days for the user).
+const MAX_TRIP_DAYS = 10;
+
+// Returns the trip dates clamped to MAX_TRIP_DAYS inclusive (start..end).
+const clampTripDates = ({ start, end }) => {
+  if (!start || !end) return { start, end };
+  const s = new Date(start);
+  const e = new Date(end);
+  const totalDays = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+  if (totalDays <= MAX_TRIP_DAYS) return { start, end };
+  const capped = new Date(s);
+  capped.setDate(capped.getDate() + MAX_TRIP_DAYS - 1);
+  return { start, end: capped.toISOString().split('T')[0] };
+};
+
 // Build a list of YYYY-MM-DD strings covering [start..end] inclusive.
 const expandDays = (start, end) => {
   const out = [];
@@ -25,8 +43,18 @@ const expandDays = (start, end) => {
 };
 
 const generateFullTrip = async (formData, userId) => {
-  const { destination, startCity, dates, travelers, budget, style, interests, dietary } = formData;
+  const { destination, startCity, dates: rawDates, travelers, budget, style, interests, dietary } = formData;
   const { lat, lon, name } = destination;
+
+  // Hard server-side cap: any caller (FE, postman, replayed request) gets
+  // their range trimmed to MAX_TRIP_DAYS so the LLM and the weather API
+  // both stay within their reliable budgets.
+  const dates = clampTripDates(rawDates || {});
+  if (rawDates?.end && dates.end !== rawDates.end) {
+    console.warn(
+      `Trip range ${rawDates.start} → ${rawDates.end} clamped to ${dates.end} (max ${MAX_TRIP_DAYS} days).`
+    );
+  }
 
   console.log(`Starting generation for ${name}...`);
 

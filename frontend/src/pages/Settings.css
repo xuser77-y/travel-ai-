@@ -1,7 +1,9 @@
 .settings-page {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  /* Top padding clears the fixed navbar (height + its 16px top offset
+     + breathing room) so the page header doesn't slide under it. */
+  padding: calc(var(--nav-height) + 32px) 24px 80px;
   color: var(--text);
 }
 

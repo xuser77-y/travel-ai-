@@ -1,0 +1,112 @@
+/* StadiumRouteMap — animated arcs between Morocco's host cities. */
+
+.srm-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto 40px;
+  padding: 24px;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(249, 115, 22, 0.08), transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(190, 18, 60, 0.10), transparent 60%),
+    rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.srm-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* ----- Routes -------------------------------------------------------- */
+
+.srm-path-bg {
+  fill: none;
+  stroke: rgba(251, 191, 36, 0.18);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.srm-path-fg {
+  fill: none;
+  stroke: url(#srmRouteGrad);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 12 14;
+  /* Length of the gap pattern times 2 = total cycle */
+  animation: srm-march 3.2s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(249, 115, 22, 0.55));
+}
+
+@keyframes srm-march {
+  to { stroke-dashoffset: -52; }
+}
+
+.srm-dot {
+  filter: drop-shadow(0 0 6px rgba(254, 243, 199, 0.8));
+}
+
+/* ----- City pins ----------------------------------------------------- */
+
+.srm-pin {
+  fill: #fde68a;
+  stroke: #f97316;
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.7));
+}
+
+.srm-pin-outer {
+  fill: rgba(249, 115, 22, 0.18);
+  stroke: rgba(249, 115, 22, 0.45);
+  stroke-width: 1;
+  transform-origin: center;
+  animation: srm-pulse 2.4s ease-out infinite;
+}
+
+@keyframes srm-pulse {
+  0%   { transform: scale(0.85); opacity: 0.9; }
+  60%  { transform: scale(1.45); opacity: 0;   }
+  100% { transform: scale(1.45); opacity: 0;   }
+}
+
+.srm-pin-label {
+  text-anchor: middle;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  fill: rgba(255, 255, 255, 0.85);
+  pointer-events: none;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+/* ----- Light-mode tuning -------------------------------------------- */
+
+body.light-mode .srm-wrap {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(249, 115, 22, 0.10), transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(190, 18, 60, 0.08), transparent 60%),
+    rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 36px -16px rgba(15, 23, 42, 0.18);
+}
+
+body.light-mode .srm-path-bg { stroke: rgba(234, 88, 12, 0.30); }
+body.light-mode .srm-pin-label { fill: #0f172a; text-shadow: none; }
+
+/* ----- Reduced motion ----------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .srm-path-fg,
+  .srm-pin-outer,
+  .srm-dot { animation: none; }
+}
+
+/* ----- Mobile ------------------------------------------------------- */
+@media (max-width: 720px) {
+  .srm-wrap { padding: 16px; }
+  .srm-pin-label { font-size: 13px; }
+}

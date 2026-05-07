@@ -1,0 +1,78 @@
+/* TiltCard — pointer-driven 3D tilt wrapper.
+   The wrapping element provides the perspective; the inner element
+   carries the rotation so the original child (which may use its own
+   transforms for hover) remains untouched. */
+
+.tilt-card {
+  --rx: 0deg;
+  --ry: 0deg;
+  --lift: 0px;
+  --mx: 50%;
+  --my: 50%;
+  perspective: 1100px;
+  transform-style: preserve-3d;
+  /* The card child can paint a backdrop shadow itself; we just need
+     the perspective container to be display:contents-friendly. */
+  display: block;
+  position: relative;
+}
+
+.tilt-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Mirror the column-flex layout the stadium / itinerary cards expect.
+     The cards we wrap are all vertical flex containers (photo on top, body
+     below), and the wrapper used to BE that container — so we must keep
+     that behaviour or the children collapse. */
+  display: flex;
+  flex-direction: column;
+  /* Inherit the parent's rounded corners and clipping so the sweep
+     highlight (drawn via ::after) never bleeds outside the card edge. */
+  border-radius: inherit;
+  overflow: hidden;
+  transform: translateZ(var(--lift)) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-style: preserve-3d;
+  will-change: transform;
+  /* The light-sweep highlight follows the cursor across the card. */
+  --sweep:
+    radial-gradient(
+      circle at var(--mx) var(--my),
+      rgba(255, 255, 255, 0.18),
+      rgba(255, 255, 255, 0) 45%
+    );
+}
+
+/* Hover-only sweep — drawn into a pseudo-element so it sits above the
+   image but under the body content. The actual children control their
+   own visuals; we just paint a soft highlight on top. */
+.tilt-card-inner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--sweep);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  mix-blend-mode: screen;
+  z-index: 2;
+}
+
+.tilt-card:hover .tilt-card-inner::after { opacity: 1; }
+
+/* Direct children should respect their own border-radii. The outer
+   article already has `overflow: hidden`, so the rounded clipping
+   of the whole card is preserved without forcing every child to
+   round all four corners (which would break photos and footers). */
+
+/* Disable on touch / no-hover devices and for users who prefer reduced
+   motion — keeps the card flat and stable. */
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .tilt-card-inner {
+    transform: none !important;
+    transition: none;
+  }
+  .tilt-card-inner::after { display: none; }
+}

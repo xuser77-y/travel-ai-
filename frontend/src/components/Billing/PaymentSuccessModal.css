@@ -1,0 +1,204 @@
+/* PaymentSuccessModal — post-checkout success sheet with PDF download CTA.
+   Mirrors the dark-then-override-for-light pattern used by ConfirmDialog
+   so it integrates cleanly with the rest of the app's theme system.
+   Concrete hex colours (not CSS vars) for the card surface — this is the
+   same approach `ConfirmDialog.css` takes and avoids the empty-background
+   bug we hit when relying on a non-existent `--card-bg`. */
+
+/* ----- Backdrop ------------------------------------------------------- */
+.psm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: psm-fade-in 0.15s ease-out;
+}
+
+/* ----- Card (DARK by default) ---------------------------------------- */
+.psm-card {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  background: #1f2937;        /* solid surface, lifts cleanly off backdrop */
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  padding: 36px 32px 28px;
+  text-align: center;
+  animation: psm-pop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1.05);
+}
+
+/* ----- Close button -------------------------------------------------- */
+.psm-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(248, 250, 252, 0.6);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.psm-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+/* ----- Success icon -------------------------------------------------- */
+.psm-icon-wrap {
+  display: inline-flex;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  margin-bottom: 14px;
+  align-items: center;
+  justify-content: center;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+/* ----- Copy ---------------------------------------------------------- */
+.psm-title {
+  margin: 4px 0 6px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: inherit;
+}
+
+.psm-sub {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: rgba(248, 250, 252, 0.92);
+}
+.psm-sub strong { font-weight: 700; }
+.psm-sub .psm-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.psm-hint {
+  margin: 0 0 22px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: rgba(248, 250, 252, 0.6);
+}
+
+/* ----- Actions ------------------------------------------------------- */
+.psm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.psm-btn {
+  flex: 1;
+  min-width: 140px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: inherit;
+  transition: transform 0.12s, background 0.15s, border-color 0.15s, filter 0.15s, opacity 0.15s;
+}
+.psm-btn:disabled { opacity: 0.65; cursor: progress; transform: none; }
+
+.psm-btn-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+.psm-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.psm-btn-primary {
+  background: linear-gradient(135deg, #a855f7, #6366f1);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 10px 24px -8px rgba(99, 102, 241, 0.55);
+}
+.psm-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.psm-spin { animation: psm-spin 0.9s linear infinite; }
+
+/* ----- Animations ---------------------------------------------------- */
+@keyframes psm-spin { to { transform: rotate(360deg); } }
+@keyframes psm-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes psm-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* ===== LIGHT MODE OVERRIDES =========================================
+   Same pattern ConfirmDialog.css uses — flip every dark-tuned colour
+   to its light-mode equivalent when `body.light-mode` is set. */
+
+body.light-mode .psm-backdrop {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+body.light-mode .psm-card {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+}
+
+body.light-mode .psm-close {
+  color: #6b7280;
+}
+body.light-mode .psm-close:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+body.light-mode .psm-icon-wrap {
+  /* Slightly stronger fill so the green pops against white card. */
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+body.light-mode .psm-sub  { color: rgba(15, 23, 42, 0.92); }
+body.light-mode .psm-hint { color: #64748b; }
+
+body.light-mode .psm-btn-secondary {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.1);
+}
+body.light-mode .psm-btn-secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+/* Primary button (gradient) reads great on both themes — only soften the
+   shadow on light mode so it doesn't look like a floating bruise. */
+body.light-mode .psm-btn-primary {
+  box-shadow: 0 10px 24px -8px rgba(99, 102, 241, 0.4);
+}

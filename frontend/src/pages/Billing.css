@@ -1,7 +1,8 @@
 .billing-page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  /* Clear the fixed navbar so the page header isn't hidden under it. */
+  padding: calc(var(--nav-height) + 32px) 24px 80px;
   color: var(--text);
 }
 

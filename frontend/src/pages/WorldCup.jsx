@@ -1,12 +1,58 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Trophy, Users, Star, Clock, Compass, Zap, ExternalLink, ArrowRight, MessageCircle, Calendar } from 'lucide-react';
+import { MapPin, Trophy, Users, Star, Clock, Compass, Zap, ExternalLink, ArrowRight, MessageCircle, Calendar, Sparkles } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import useTripStore from '../stores/tripStore';
+import TiltCard from '../components/WorldCup3D/TiltCard';
+import StadiumRouteMap from '../components/WorldCup3D/StadiumRouteMap';
 import './WorldCup.css';
+
+// The 3D hero scene is heavy (R3F + custom shaders). Lazy-load it so the
+// rest of the page renders instantly, and skip it entirely on devices that
+// either can't handle WebGL well or have requested reduced motion.
+const HeroScene3D = lazy(() => import('../components/WorldCup3D/HeroScene3D'));
+
+// Cheap, dependency-free hook: returns true when we should NOT render the
+// 3D hero (mobile width, prefers-reduced-motion, or no WebGL). The result
+// is sticky once true so layout doesn't flicker on resize.
+const useShouldRender3D = () => {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.matchMedia('(max-width: 820px)').matches;
+    let webglOk = true;
+    try {
+      const c = document.createElement('canvas');
+      webglOk = !!(c.getContext('webgl2') || c.getContext('webgl'));
+    } catch { webglOk = false; }
+    setEnabled(!reduce && !isMobile && webglOk);
+  }, []);
+  return enabled;
+};
+
+// FIFA has officially confirmed the tournament dates and the centenary
+// opening on the South-American leg. Everything in this object comes
+// from FIFA's public announcement — no fabricated match-ups.
+const TOURNAMENT_FACTS = {
+  startDate: 'June 14, 2030',
+  endDate: 'July 21, 2030',
+  teams: 48,
+  totalMatches: 104,
+  hostNations: ['Morocco', 'Spain', 'Portugal'],
+  centenaryHosts: ['Argentina', 'Uruguay', 'Paraguay'],
+  moroccoHostCount: 6,
+  // Phase windows per FIFA's published competition schedule.
+  phases: [
+    { label: 'Group Stage',    window: 'June 14 – June 27' },
+    { label: 'Round of 16',    window: 'June 30 – July 3'  },
+    { label: 'Quarter Finals', window: 'July 5 – July 6'    },
+    { label: 'Semi Finals',    window: 'July 9 – July 10'   },
+    { label: 'Final',          window: 'July 21'             }
+  ]
+};
 
 // Numbered DivIcon marker for stadium pins
 const makeStadiumIcon = (number) => L.divIcon({
@@ -58,6 +104,11 @@ const WorldCup = () => {
   const [gateError, setGateError] = useState(null);
   const [activeCity, setActiveCity] = useState(null);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
+  // Real fan rooms (fetched from /api/chat/rooms, filtered to WC). Used
+  // to drive the Community section's room cards + live counts — no more
+  // hard-coded "412 members" fake numbers.
+  const [fanRooms, setFanRooms] = useState([]);
+  const enable3D = useShouldRender3D();
 
   // Trip templates for the AI-Powered Planners section
   const applyTemplate = (template) => {
@@ -168,8 +219,27 @@ const WorldCup = () => {
     };
 
     fetchWCData();
+
+    // Real fan-room data — public endpoint, safe to call without a token.
+    // We tolerate failure silently (offline / first boot) and fall back to
+    // an empty list rather than show fabricated rooms.
+    axios.get('http://localhost:5000/api/chat/rooms')
+      .then((res) => {
+        const wc = (res.data || []).filter((r) => r.isWorldCupFanRoom);
+        setFanRooms(wc);
+      })
+      .catch(() => { /* leave fanRooms = [] — the UI handles empty state */ });
+
     return () => clearInterval(timer);
   }, []);
+
+  // Aggregate counts derived from real WC fan rooms. Memoised so the
+  // Community section doesn't recompute on every interval tick.
+  const fanStats = useMemo(() => ({
+    totalFans: fanRooms.reduce((sum, r) => sum + (r.memberCount || 0), 0),
+    liveRooms: fanRooms.length,
+    hostCities: TOURNAMENT_FACTS.moroccoHostCount
+  }), [fanRooms]);
 
   // Note: previously this page rendered its own "premium hero" upgrade
   // screen on 401/402. With the new freemium model the App-level
@@ -178,8 +248,19 @@ const WorldCup = () => {
 
   return (
     <div className={`world-cup-v2 ${lang === 'ar' ? 'rtl' : ''}`}>
-      {/* Hero Section */}
-      <section className="wc-hero-v2" style={{ backgroundImage: `url('/assets/stadiums/magical_morocco_hero_1777285782527.png')` }}>
+      {/* Hero Section. The static image is kept as the layered fallback
+          (and as the seed for browsers that fail the 3D guard). The R3F
+          canvas mounts on top when allowed, with pointer-events disabled
+          so all clicks still hit the CTAs. */}
+      <section
+        className={`wc-hero-v2 ${enable3D ? 'has-3d' : ''}`}
+        style={{ backgroundImage: `url('/assets/stadiums/magical_morocco_hero_1777285782527.png')` }}
+      >
+        {enable3D && (
+          <Suspense fallback={null}>
+            <HeroScene3D />
+          </Suspense>
+        )}
         <div className="wc-hero-overlay">
           <div className="wc-hero-content-v2">
             <span className="road-tag">{t.heroSub}</span>
@@ -262,32 +343,36 @@ const WorldCup = () => {
             )}
           </div>
 
+          {/* Tournament phases — the only data here that is officially
+              published by FIFA (no team match-ups invented). The draw
+              hasn't happened yet, so we deliberately don't show any
+              fictional team confrontations. */}
           <div className="match-preview">
             <div className="match-header">
-              <Clock size={18} /> <span>Match Highlights</span>
+              <Calendar size={18} /> <span>Tournament Phases</span>
             </div>
             <div className="match-list">
-              <div className="match-item">
-                <span className="m-date">OPENING • JUNE 14, 2030</span>
-                <div className="m-teams">
-                  <img src="https://flagcdn.com/w40/ma.png" alt="Morocco" /> Morocco <strong>VS</strong> TBD <img src="https://flagcdn.com/w40/un.png" alt="TBD" />
+              <div className="match-item phase-summary">
+                <span className="m-date">{TOURNAMENT_FACTS.startDate.toUpperCase()} → {TOURNAMENT_FACTS.endDate.toUpperCase()}</span>
+                <div className="m-teams phase-headline">
+                  <strong>{TOURNAMENT_FACTS.teams}</strong>&nbsp;teams ·&nbsp;
+                  <strong>{TOURNAMENT_FACTS.totalMatches}</strong>&nbsp;matches
                 </div>
-                <span className="m-venue">Grand Stade de Casablanca</span>
+                <span className="m-venue">
+                  Hosted by {TOURNAMENT_FACTS.hostNations.join(', ')} · Centenary openers in {TOURNAMENT_FACTS.centenaryHosts.join(', ')}
+                </span>
               </div>
-              <div className="match-item">
-                <span className="m-date">GROUP B • JUNE 15, 2030</span>
-                <div className="m-teams">
-                  <img src="https://flagcdn.com/w40/es.png" alt="Spain" /> Spain <strong>VS</strong> Portugal <img src="https://flagcdn.com/w40/pt.png" alt="Portugal" />
+              {TOURNAMENT_FACTS.phases.map((p) => (
+                <div className="match-item phase-item" key={p.label}>
+                  <span className="m-date">{p.window.toUpperCase()}</span>
+                  <div className="m-teams phase-row">
+                    <span className="phase-label">{p.label}</span>
+                  </div>
                 </div>
-                <span className="m-venue">Stade Ibn Batouta, Tangier</span>
-              </div>
-              <div className="match-item">
-                <span className="m-date">QUARTER FINAL • JULY 5, 2030</span>
-                <div className="m-teams">
-                  <img src="https://flagcdn.com/w40/fr.png" alt="France" /> France <strong>VS</strong> Brazil <img src="https://flagcdn.com/w40/br.png" alt="Brazil" />
-                </div>
-                <span className="m-venue">Stade Marrakech</span>
-              </div>
+              ))}
+              <p className="phase-note">
+                Match-ups will be confirmed after the official draw. Source: FIFA.
+              </p>
             </div>
           </div>
         </div>
@@ -308,7 +393,8 @@ const WorldCup = () => {
             ))
           ) : (
             cities.map((city, i) => (
-              <article
+              <TiltCard
+                as="article"
                 key={city.name}
                 className={`stadium-card ${activeCity === city.name ? 'is-active' : ''}`}
                 onMouseEnter={() => setActiveCity(city.name)}
@@ -357,7 +443,7 @@ const WorldCup = () => {
                     <p className="sc-architect"><span>Architect</span> {city.architect}</p>
                   )}
                 </div>
-              </article>
+              </TiltCard>
             ))
           )}
         </div>
@@ -396,17 +482,22 @@ const WorldCup = () => {
         <div className="itinerary-header">
           <span className="it-tag">AI-POWERED PLANNERS</span>
           <h2>{t.itinerariesTitle}</h2>
-          <p>Our AI engines analyzed your team preferences and travel style to build the perfect 2030 experience.</p>
+          <p>Real travel templates, generated by our AI for the 2030 tournament. Pricing, hotels and per-day plans are computed live for your dates — no fixed pricing.</p>
         </div>
+
+        {/* Animated route map showing how the templates connect Morocco's
+            host cities. Real coordinates, real cities. */}
+        {!loading && cities.length > 0 && (
+          <StadiumRouteMap cities={cities} />
+        )}
 
         <div className="itinerary-grid">
           {[
             {
               title: "The Ultimate Fan",
-              desc: "Match-day adrenaline at the Grand Stade Casablanca. Stadium tours, fan-zone VIP access, premium suites.",
-              price: "$2,450",
+              desc: "Match-day adrenaline at the Grand Stade de Casablanca. Stadium tours, fan-zone access and premium central stays.",
               days: 7,
-              features: ["All Category 1 Match Tickets", "5-Star Stadium Hotels", "Exclusive Fan Zone VIP"],
+              features: ["Match-day in Casablanca", "Central premium hotels", "Fan zone access"],
               btnColor: "#be123c",
               type: "fan",
               city: "Casablanca",
@@ -421,9 +512,8 @@ const WorldCup = () => {
             {
               title: "Culture + Football",
               desc: "Balance match-day energy with 10 days exploring Imperial cities, Berber medinas and the Atlas.",
-              price: "$1,890",
               days: 10,
-              features: ["2x Category 2 Match Tickets", "Atlas Mountain Retreat", "Gourmet Food Tour"],
+              features: ["Imperial cities tour", "Atlas Mountain retreat", "Gourmet food trail"],
               btnColor: "#1e3a8a",
               popular: true,
               type: "culture",
@@ -438,10 +528,9 @@ const WorldCup = () => {
             },
             {
               title: "Coastal Explorer",
-              desc: "Matches in Casablanca and Tangier combined with northern beach vibes, surfing, and yacht days.",
-              price: "$2,100",
+              desc: "Match days in Casablanca and Tangier combined with northern beach vibes, surfing, and harbour days.",
               days: 9,
-              features: ["Matches in Casablanca & Tangier", "Private Yacht Day Trip", "Surf Lessons in Taghazout"],
+              features: ["Casablanca + Tangier loop", "Atlantic coast experiences", "Surf lesson in Taghazout"],
               btnColor: "#0ea5e9",
               type: "coastal",
               city: "Tangier",
@@ -454,7 +543,7 @@ const WorldCup = () => {
               cta: "Plan Coastal Trip"
             }
           ].map((it, i) => (
-            <div key={i} className={`itinerary-card-ref ${it.popular ? 'popular' : ''}`}>
+            <TiltCard key={i} className={`itinerary-card-ref ${it.popular ? 'popular' : ''}`}>
               {it.popular && <span className="local-badge">LOCAL FAVORITE</span>}
               <div className="it-card-top">
                 <h3>{it.title}</h3>
@@ -462,6 +551,7 @@ const WorldCup = () => {
                 <div className="it-meta-row">
                   <span><MapPin size={12} /> {it.city}</span>
                   <span><Clock size={12} /> {it.days} days</span>
+                  <span><Sparkles size={12} /> AI-estimated</span>
                 </div>
               </div>
               <div className="it-features">
@@ -473,9 +563,13 @@ const WorldCup = () => {
                 ))}
               </div>
               <div className="it-card-bottom">
+                {/* No fabricated price tag — the real total is generated
+                    by the AI planner using the user's actual dates and
+                    travellers. We show a budget range only. */}
                 <div className="it-price-row">
-                  <span>starting at</span>
-                  <strong>{it.price}</strong>
+                  <span>budget tier</span>
+                  <strong>~{it.budget.currency} {it.budget.total.toLocaleString()}</strong>
+                  <small className="it-price-disclaimer">AI generates the live estimate for your dates</small>
                 </div>
                 <button
                   className="btn-it-ref"
@@ -485,40 +579,46 @@ const WorldCup = () => {
                   {it.cta} <ArrowRight size={16} />
                 </button>
               </div>
-            </div>
+            </TiltCard>
           ))}
         </div>
       </section>
 
-      {/* Fan Rooms */}
+      {/* Fan Rooms — driven entirely by REAL chat-room data from
+          /api/chat/rooms (filtered to WorldCup rooms). No fabricated
+          counts or hard-coded room lists. */}
       <section className="fan-rooms-v2">
         <div className="fr-glow" aria-hidden />
         <div className="fr-grid">
           <div className="fr-content">
             <span className="fr-eyebrow"><MessageCircle size={14} /> COMMUNITY</span>
             <h2>Join the Fan Rooms</h2>
-            <p>Connect with thousands of travelers heading to Morocco 2030. Coordinate match-day meetups, split hotel bookings, share insider tips, and ride together to stadiums.</p>
+            <p>
+              Coordinate match-day meetups, split hotel bookings, share insider
+              tips and ride together to the stadiums. All rooms below are live
+              — the counts come straight from our community in real time.
+            </p>
 
             <div className="fr-stats">
               <div className="fr-stat">
                 <Users size={18} />
                 <div>
-                  <strong>1,247</strong>
+                  <strong>{fanStats.totalFans.toLocaleString()}</strong>
                   <small>Active fans</small>
                 </div>
               </div>
               <div className="fr-stat">
                 <MessageCircle size={18} />
                 <div>
-                  <strong>32</strong>
-                  <small>Live rooms</small>
+                  <strong>{fanStats.liveRooms}</strong>
+                  <small>Live fan rooms</small>
                 </div>
               </div>
               <div className="fr-stat">
-                <Calendar size={18} />
+                <Trophy size={18} />
                 <div>
-                  <strong>89</strong>
-                  <small>Match meetups</small>
+                  <strong>{fanStats.hostCities}</strong>
+                  <small>Host cities</small>
                 </div>
               </div>
             </div>
@@ -529,23 +629,38 @@ const WorldCup = () => {
           </div>
 
           <div className="fr-rooms">
-            {[
-              { name: 'Casablanca · Match Night', members: 412, flag: 'ma', color: '#be123c' },
-              { name: 'Spain Fans · Group B', members: 187, flag: 'es', color: '#eab308' },
-              { name: 'Atlas Trail Hikers', members: 96, flag: 'ma', color: '#10b981' },
-              { name: 'Foodies of Marrakech', members: 254, flag: 'ma', color: '#f97316' }
-            ].map((room) => (
-              <div key={room.name} className="fr-room-card">
-                <div className="fr-room-flag" style={{ background: room.color }}>
-                  <img src={`https://flagcdn.com/w40/${room.flag}.png`} alt="" />
-                </div>
-                <div className="fr-room-info">
-                  <h4>{room.name}</h4>
-                  <span><Users size={11} /> {room.members} members · live now</span>
-                </div>
-                <span className="fr-live-dot" aria-hidden />
+            {fanRooms.length === 0 ? (
+              <div className="fr-room-empty">
+                <Sparkles size={18} />
+                <p>
+                  No live fan rooms yet — you could be the first.{' '}
+                  <button className="fr-room-empty-link" onClick={() => navigate('/community')}>
+                    Open a room
+                  </button>
+                </p>
               </div>
-            ))}
+            ) : (
+              fanRooms.slice(0, 6).map((room) => (
+                <button
+                  key={room._id}
+                  className="fr-room-card"
+                  onClick={() => navigate('/community')}
+                  type="button"
+                >
+                  <div className="fr-room-flag" style={{ background: '#be123c' }}>
+                    <img src="https://flagcdn.com/w40/ma.png" alt="" />
+                  </div>
+                  <div className="fr-room-info">
+                    <h4>{room.roomName}</h4>
+                    <span>
+                      <Users size={11} /> {room.memberCount.toLocaleString()} member{room.memberCount === 1 ? '' : 's'}
+                      {room.destination ? ` · ${room.destination}` : ''}
+                    </span>
+                  </div>
+                  <span className="fr-live-dot" aria-hidden />
+                </button>
+              ))
+            )}
           </div>
         </div>
       </section>

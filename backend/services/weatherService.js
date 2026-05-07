@@ -1,6 +1,42 @@
 const axios = require('axios');
+const http = require('http');
+const https = require('https');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Force IPv4 to avoid the same AAAA-lookup `ENOTFOUND` issue we saw on
+// Pexels. Open-Meteo serves over IPv6 too but on some ISPs the IPv6 path
+// is unreliable and Node sticks with the broken record.
+const ipv4HttpsAgent = new https.Agent({ family: 4, keepAlive: true });
+const ipv4HttpAgent = new http.Agent({ family: 4, keepAlive: true });
+
+// Open-Meteo's free `/v1/forecast` endpoint supports up to ~16 days
+// ahead of "today". Requesting beyond that returns HTTP 400
+// (`ERR_BAD_REQUEST`), which we surfaced as a noisy "Weather fetch
+// failed" warning. Clamp here instead.
+const FORECAST_HORIZON_DAYS = 16;
+
+const toYmd = (d) => new Date(d).toISOString().split('T')[0];
+
+const clampForecastWindow = (startStr, endStr) => {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const horizon = new Date(today);
+  horizon.setUTCDate(horizon.getUTCDate() + FORECAST_HORIZON_DAYS);
+
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+
+  // If the trip starts after the horizon, no forecast is available at all.
+  if (start > horizon) return null;
+
+  // Don't ask for a past start date — Open-Meteo would 400 on that too.
+  const clampedStart = start < today ? today : start;
+  const clampedEnd = end > horizon ? horizon : end;
+
+  if (clampedEnd < clampedStart) return null;
+  return { start: toYmd(clampedStart), end: toYmd(clampedEnd) };
+};
 
 // Errors that are worth retrying once — usually a flaky connection or DNS
 // hiccup, not a real upstream outage. ECONNRESET in particular fires when
@@ -33,13 +69,23 @@ const isTransient = (err) => {
  * itinerary just goes out without per-day weather verdicts).
  */
 const getForecast = async (lat, lon, startDate, endDate) => {
+  // Clamp to the API's 16-day horizon. If the trip is fully beyond it,
+  // skip the network call entirely and return null (caller handles that).
+  const window = clampForecastWindow(startDate, endDate);
+  if (!window) {
+    console.warn(
+      `Weather skipped: trip dates (${toYmd(startDate)} → ${toYmd(endDate)}) are beyond the ${FORECAST_HORIZON_DAYS}-day forecast horizon.`
+    );
+    return null;
+  }
+
   const params = {
     latitude: lat,
     longitude: lon,
     daily: 'weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max',
     timezone: 'auto',
-    start_date: startDate.split('T')[0],
-    end_date: endDate.split('T')[0]
+    start_date: window.start,
+    end_date: window.end
   };
 
   let lastErr = null;
@@ -47,6 +93,8 @@ const getForecast = async (lat, lon, startDate, endDate) => {
     try {
       const response = await axios.get('https://api.open-meteo.com/v1/forecast', {
         params,
+        httpAgent: ipv4HttpAgent,
+        httpsAgent: ipv4HttpsAgent,
         timeout: 8000 // open-meteo is fast; 8s is generous
       });
       return response.data.daily;

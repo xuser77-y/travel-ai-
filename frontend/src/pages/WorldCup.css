@@ -1121,3 +1121,155 @@ body.light-mode .btn-glass:hover {
 body.light-mode .soul-kingdom {
   background: var(--bg);
 }
+
+/* ==========================================================================
+   3D Hero Canvas
+   When `.wc-hero-v2.has-3d` is set, the R3F canvas mounts inside the section
+   as the visual layer. The static background image stays as a fallback for
+   the milliseconds before the canvas paints, then the canvas covers it.
+   The overlay above must keep z-index > canvas so text and CTAs stay
+   readable + clickable.
+   ========================================================================== */
+.wc-hero-v2.has-3d > canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 1;
+}
+.wc-hero-v2.has-3d .wc-hero-overlay {
+  position: relative;
+  z-index: 2;
+  /* Soften the dark gradient so the 3D scene shows through more on the right
+     side; text on the left still has the dark band for contrast. */
+  background: linear-gradient(
+    to right,
+    rgba(15, 23, 42, 0.78),
+    rgba(15, 23, 42, 0.45) 45%,
+    rgba(15, 23, 42, 0.10) 80%,
+    rgba(15, 23, 42, 0.0)
+  );
+}
+
+/* ==========================================================================
+   Tournament Phases (replaces the old fake "Match Highlights" block)
+   ========================================================================== */
+.match-item.phase-summary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.10), rgba(190, 18, 60, 0.08));
+  border: 1px solid rgba(249, 115, 22, 0.22);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.match-item.phase-summary .phase-headline {
+  font-size: 1rem;
+  color: var(--text);
+}
+.match-item.phase-summary .phase-headline strong {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--sunset-orange);
+  letter-spacing: -0.02em;
+}
+
+.match-item.phase-item {
+  padding: 10px 0;
+  margin-bottom: 0;
+  border-bottom: 1px dashed var(--border);
+}
+.match-item.phase-item:last-of-type { border-bottom: none; }
+
+.phase-label {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.phase-note {
+  margin-top: 14px;
+  font-size: 0.74rem;
+  font-style: italic;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+body.light-mode .match-item.phase-summary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.12), rgba(190, 18, 60, 0.08));
+  border-color: rgba(249, 115, 22, 0.28);
+}
+body.light-mode .phase-label {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.10);
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   Itinerary card — AI-estimated price block (replaces fixed fake $X price)
+   ========================================================================== */
+.it-price-row strong {
+  /* Smaller than the old fixed-price hero number — this is a budget tier,
+     not a promised total. */
+  font-size: 1.5rem !important;
+  margin-bottom: 6px !important;
+  color: var(--text);
+}
+
+.it-price-disclaimer {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+body.light-mode .it-price-row strong { color: #0f172a; }
+
+/* ==========================================================================
+   Fan-room empty state + button reset for the now-clickable cards.
+   The cards are <button> so we strip default UA styles and keep the
+   look identical to the previous <div>.
+   ========================================================================== */
+button.fr-room-card {
+  width: 100%;
+  font-family: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.fr-room-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  border: 1px dashed var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+}
+.fr-room-empty p { margin: 0; font-size: 0.92rem; line-height: 1.5; }
+
+.fr-room-empty-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--sunset-orange);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.fr-room-empty-link:hover { color: var(--sunset-deep); }
+
+body.light-mode .fr-room-empty {
+  background: #ffffff;
+  color: #475569;
+}
