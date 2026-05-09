@@ -2,8 +2,12 @@ const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: { type: String, required: false }, // Optional for Google users
   name: { type: String, required: true },
+  googleId: { type: String, unique: true, sparse: true },
+  isEmailVerified: { type: Boolean, default: false },
+  otp: { type: String },
+  otpExpires: { type: Date },
   profile: {
     avatar: String,
     bio: String,
@@ -18,6 +22,7 @@ const UserSchema = new mongoose.Schema({
   // gate for every /api/admin/* route and every "manage anything" FE control.
   isAdmin: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  readNotifications: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Notification' }],
 
   // --- Subscription / Plan ----------------------------------------------
   // Free-tier lifecycle:

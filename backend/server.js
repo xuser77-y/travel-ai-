@@ -121,6 +121,9 @@ io.on('connection', (socket) => {
       userId: info.userId || null,
       name: info.name || 'Guest'
     });
+    if (info.userId) {
+      socket.join(`user_${info.userId}`);
+    }
   });
 
   socket.on('join_room', (roomId) => {
@@ -210,6 +213,7 @@ const livemapRoutes = require('./routes/livemap');
 const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payments');
 const settingsRoutes = require('./routes/settings');
+const notificationRoutes = require('./routes/notifications');
 
 app.use('/api/trips', tripRoutes);
 app.use('/api/search', searchRoutes);
@@ -220,6 +224,7 @@ app.use('/api/livemap', livemapRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
   res.send('Travio Backend API is running');

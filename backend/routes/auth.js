@@ -5,7 +5,11 @@ const User = require('../models/User');
 const ChatRoom = require('../models/ChatRoom');
 const { hashPassword, verifyPassword, isHashed } = require('../services/password');
 const planService = require('../services/planService');
+const emailService = require('../services/emailService');
+const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Ensures the user is a member of every hub flagged as `isGlobalDefault`
 // (currently the General Travel Hub). Idempotent — safe to call on every login.
@@ -98,22 +102,30 @@ router.post('/signup', async (req, res) => {
       return res.status(409).json({ error: 'This email is already registered. Please sign in instead.' });
     }
 
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     const user = new User({
       email: normalized.toLowerCase(),
       name: (name && name.trim()) || normalized.split('@')[0],
-      password: hashPassword(password)
+      password: hashPassword(password),
+      otp,
+      otpExpires,
+      isEmailVerified: false
     });
 
     if (isWhitelistedAdmin(user.email)) user.isAdmin = true;
 
-    user.lastLoginAt = new Date();
-    user.lastSeenAt = new Date();
-    user.lastIp = getClientIp(req);
-    user.lastUserAgent = req.headers['user-agent'] || '';
-    user.loginCount = 1;
     await user.save();
 
-    res.status(201).json(await issueSession(user));
+    // Send OTP email in background
+    emailService.sendOTP(user.email, otp).catch(console.error);
+
+    res.status(201).json({ 
+      message: 'OTP sent to your email. Please verify to complete signup.',
+      email: user.email
+    });
   } catch (error) {
     // Mongo duplicate-key fallback in case of a unique index race.
     if (error?.code === 11000) {
@@ -147,6 +159,10 @@ router.post('/login', async (req, res) => {
     }
     if (!isHashed(user.password)) {
       user.password = hashPassword(password);
+    }
+
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ error: 'Email not verified. Please verify your email first.', unverified: true });
     }
 
     if (user.disabled) {
@@ -194,6 +210,100 @@ router.get('/me', async (req, res) => {
     });
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// POST /api/auth/verify-otp
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    const user = await findUserByEmail(email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    if (user.isEmailVerified) return res.status(400).json({ error: 'Email already verified' });
+    if (user.otp !== otp || user.otpExpires < new Date()) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    user.isEmailVerified = true;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    
+    user.lastLoginAt = new Date();
+    user.lastSeenAt = new Date();
+    user.lastIp = getClientIp(req);
+    user.lastUserAgent = req.headers['user-agent'] || '';
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save();
+
+    res.json(await issueSession(user));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/auth/resend-otp
+router.post('/resend-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await findUserByEmail(email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.isEmailVerified) return res.status(400).json({ error: 'Email already verified' });
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    await emailService.sendOTP(user.email, otp);
+    res.json({ message: 'OTP resent successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/auth/google
+router.post('/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'Google credential missing' });
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    let user = await User.findOne({ $or: [{ googleId }, { email: email.toLowerCase() }] });
+
+    if (!user) {
+      user = new User({
+        email: email.toLowerCase(),
+        name,
+        googleId,
+        isEmailVerified: true, // Google accounts are verified
+        profile: { avatar: picture }
+      });
+    } else {
+      // Link Google ID if user exists but hadn't linked it yet
+      if (!user.googleId) user.googleId = googleId;
+      if (!user.isEmailVerified) user.isEmailVerified = true;
+    }
+
+    if (isWhitelistedAdmin(user.email)) user.isAdmin = true;
+
+    user.lastLoginAt = new Date();
+    user.lastSeenAt = new Date();
+    user.lastIp = getClientIp(req);
+    user.lastUserAgent = req.headers['user-agent'] || '';
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save();
+
+    res.json(await issueSession(user));
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(401).json({ error: 'Google authentication failed' });
   }
 });
 

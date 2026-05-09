@@ -71,6 +71,89 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// GET /api/admin/analytics — data for charts (last 30 days of growth + distributions)
+router.get('/analytics', async (req, res) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [userGrowth, tripGrowth, postTypes, revenueGrowth, planPurchases, currentPlans] = await Promise.all([
+      // Users grouped by day
+      User.aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      // Trips grouped by day
+      Trip.aggregate([
+        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      // Live posts by type (all time)
+      LivePost.aggregate([
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      // Revenue by day (last 30 days)
+      User.aggregate([
+        { $unwind: '$subscriptionHistory' },
+        {
+          $match: {
+            'subscriptionHistory.createdAt': { $gte: thirtyDaysAgo },
+            'subscriptionHistory.status': 'completed'
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$subscriptionHistory.createdAt' } },
+            total: { $sum: '$subscriptionHistory.amount' }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      // Most purchased plans (last 30 days)
+      User.aggregate([
+        { $unwind: '$subscriptionHistory' },
+        {
+          $match: {
+            'subscriptionHistory.createdAt': { $gte: thirtyDaysAgo },
+            'subscriptionHistory.status': 'completed'
+          }
+        },
+        { $group: { _id: '$subscriptionHistory.plan', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      // Current plan distribution (all users)
+      User.aggregate([
+        { $group: { _id: '$plan', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ])
+    ]);
+
+    res.json({
+      userGrowth,
+      tripGrowth,
+      postDistribution: postTypes,
+      revenueGrowth,
+      planPurchases,
+      currentPlans
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // USERS
 // ---------------------------------------------------------------------------

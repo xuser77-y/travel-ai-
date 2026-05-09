@@ -284,6 +284,22 @@ Every previous `alert()` / `window.confirm()` across `Login`, `Dashboard`, `Comm
 
 Both providers wrap the app in `App.jsx`.
 
+### 4.15 Real-time Notification System
+A robust messaging layer allowing administrators to push alerts to logged-in users instantly:
+
+- **Socket.io Delivery**: Notifications are pushed in real-time via dedicated user rooms (`user_<id>`).
+- **Admin Broadcasting**:
+  - **All Users**: Global broadcast to everyone registered.
+  - **Specific Users**: Target individuals by searching their email.
+- **Expiry Logic**: Admins can set an optional **expiry date**. Expired notifications are automatically filtered out by the backend and removed from the frontend UI without a page refresh.
+- **Premium Dropdown**: A sleek notification bell in the navbar with:
+  - Unread badge counts.
+  - Relative timestamps (e.g., "2m ago").
+  - "Mark as Read" and "Mark all as Read" functionality.
+  - Mobile-responsive fullscreen overlay.
+
+---
+
 ---
 
 ## 5. Real-time Events
@@ -293,6 +309,7 @@ Both providers wrap the app in `App.jsx`.
 | `livemap:new_post`     | the new `LivePost` doc             | `POST /api/livemap/posts`           |
 | `livemap:delete_post`  | `{ _id }`                          | `DELETE /api/livemap/posts/:id`     |
 | `chat:message`         | `{ roomId, message }`              | `POST /api/chat/rooms/:id/messages` |
+| `new_notification`     | the `Notification` doc             | `POST /api/notifications/admin`     |
 | `presence:update`      | `{ counts, sockets }`              | online tracker on connect/disconnect |
 
 `LiveMap.jsx`, `Community.jsx`, and `Admin.jsx` (Live Posts + Online sections) all subscribe via the singleton client in `frontend/src/lib/socket.js`. The admin's Live Posts section now also subscribes to `livemap:new_post`/`livemap:delete_post`, fixing the previous glitch where new posts didn't appear until the admin switched sections.
@@ -362,6 +379,7 @@ Get-NetTCPConnection -LocalPort 5000 | Select-Object -ExpandProperty OwningProce
 - **Hubs**: real persistent rooms with invite codes, presence, message moderation, and message editing/deletion in the admin modal.
 - **Password hashing**: switched from bcrypt-style to native `crypto.scrypt`; legacy plaintext upgrades on next login.
 - **API tracker**: per-route counts + recent-calls buffer powering the `API Usage` admin tab.
+- **Real-time Notifications**: Socket.io delivery, admin broadcasting (Global/Specific), auto-expiry cleanup logic, and a premium navbar dropdown.
 - **Light/Dark**: full overrides for the new admin Prompts editor (lock screen, cards, textareas, badges).
 
 ---

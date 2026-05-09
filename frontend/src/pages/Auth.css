@@ -166,3 +166,48 @@ body.light-mode .auth-error {
   color: #b91c1c;
   border-color: rgba(239, 68, 68, 0.3);
 }
+
+.otp-input {
+  text-align: center;
+  font-size: 1.5rem !important;
+  letter-spacing: 0.5rem;
+  font-weight: 700;
+  padding-left: 15px !important;
+}
+
+.resend-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--primary-light);
+  margin-bottom: 12px;
+  transition: opacity 0.2s;
+}
+
+.resend-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.text-btn {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+.google-auth-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 25px;
+  width: 100%;
+}
+
+.google-auth-wrapper > div {
+  width: 100% !important;
+}
+
+.auth-logo.accent {
+  color: var(--accent);
+}

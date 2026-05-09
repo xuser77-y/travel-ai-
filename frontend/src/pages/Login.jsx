@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Globe, Mail, Lock, User, ArrowRight, Code, Search, AlertCircle } from 'lucide-react';
+import { Globe, Mail, Lock, User, ArrowRight, AlertCircle, ShieldCheck, RefreshCw } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
 import useTripStore from '../stores/tripStore';
 import { useToast } from '../components/UI/Toast';
@@ -14,12 +15,14 @@ const Login = () => {
   const toast = useToast();
 
   const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [showOtp, setShowOtp] = useState(false);
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', otp: '' });
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
 
   const switchMode = () => {
     setIsLogin((v) => !v);
+    setShowOtp(false);
     setFormError('');
   };
 
@@ -28,11 +31,42 @@ const Login = () => {
     if (formError) setFormError('');
   };
 
+  const handleOtpVerify = async (e) => {
+    e.preventDefault();
+    if (loading || !formData.otp) return;
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/api/auth/verify-otp`, {
+        email: formData.email,
+        otp: formData.otp
+      });
+      login(res.data.user, res.data.token);
+      toast.success(`Verification successful! Welcome, ${res.data.user.name}!`);
+      navigate('/');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Invalid code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await axios.post(`${API}/api/auth/resend-otp`, { email: formData.email });
+      toast.success('A new code has been sent to your email.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to resend code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
 
-    // Client-side validation surfaces inline errors instead of round-tripping.
     if (!formData.email || !formData.password) {
       setFormError('Email and password are required.');
       return;
@@ -56,45 +90,94 @@ const Login = () => {
 
     try {
       const res = await axios.post(`${API}${endpoint}`, payload);
-      login(res.data.user, res.data.token);
-      toast.success(
-        isLogin ? `Welcome back, ${res.data.user.name}!` : `Account created — welcome, ${res.data.user.name}!`
-      );
-      navigate('/planner');
+      
+      if (!isLogin) {
+        setShowOtp(true);
+        toast.info('Please enter the verification code sent to your email.');
+      } else {
+        login(res.data.user, res.data.token);
+        toast.success(`Welcome back, ${res.data.user.name}!`);
+        navigate('/');
+      }
     } catch (err) {
       const status = err.response?.status;
-      const serverMsg = err.response?.data?.error;
+      const data = err.response?.data;
 
-      // Friendly default messages per status to avoid "Network Error"
-      // surprises if the backend goes down.
-      let msg = serverMsg;
-      if (!msg) {
-        if (err.code === 'ERR_NETWORK') msg = 'Cannot reach the server. Please try again.';
-        else msg = err.message || 'Something went wrong. Please try again.';
-      }
-
-      // Auto-bounce common cases to the right tab so the user does not have
-      // to figure out which mode they should be in.
-      if (status === 409 && !isLogin) {
-        // Email already registered while signing up → switch to login mode
-        // and pre-fill the email.
+      if (data?.unverified) {
+        setShowOtp(true);
+        toast.warning('Please verify your email to continue.');
+      } else if (status === 409 && !isLogin) {
         setIsLogin(true);
         toast.info('You already have an account. Please sign in.');
       } else if (status === 404 && isLogin) {
-        // No account during login → switch to signup with the email kept.
         setIsLogin(false);
         toast.info('No account found. Create one to continue.');
-      } else if (status === 401) {
-        toast.error('Incorrect password.');
       } else {
+        const msg = data?.error || 'Something went wrong.';
+        setFormError(msg);
         toast.error(msg);
       }
-
-      setFormError(msg);
     } finally {
       setLoading(false);
     }
   };
+
+  const onGoogleSuccess = async (response) => {
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API}/api/auth/google`, {
+        credential: response.credential
+      });
+      login(res.data.user, res.data.token);
+      toast.success(`Success! Welcome, ${res.data.user.name}!`);
+      navigate('/');
+    } catch (err) {
+      toast.error('Google authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showOtp) {
+    return (
+      <div className="auth-page">
+        <div className="auth-container glass-card">
+          <div className="auth-header">
+            <ShieldCheck className="auth-logo accent" size={48} />
+            <h2>Verify Your Email</h2>
+            <p>We've sent a 6-digit code to <strong>{formData.email}</strong></p>
+          </div>
+
+          <form className="auth-form" onSubmit={handleOtpVerify}>
+            <div className="input-group">
+              <input
+                type="text"
+                placeholder="6-digit code"
+                maxLength={6}
+                required
+                className="otp-input"
+                value={formData.otp}
+                onChange={update('otp')}
+                disabled={loading}
+              />
+            </div>
+            <button type="submit" className="btn-primary auth-submit" disabled={loading || formData.otp.length < 6}>
+              {loading ? 'Verifying…' : 'Verify Code'}
+            </button>
+          </form>
+
+          <div className="auth-footer">
+            <button type="button" className="resend-btn" onClick={handleResendOtp} disabled={loading}>
+              <RefreshCw size={14} /> Resend Code
+            </button>
+            <button type="button" className="text-btn" onClick={() => setShowOtp(false)}>
+              Back to {isLogin ? 'Login' : 'Signup'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">
@@ -117,7 +200,6 @@ const Login = () => {
                 type="text"
                 placeholder="Full Name"
                 required
-                autoComplete="name"
                 value={formData.name}
                 onChange={update('name')}
                 disabled={loading}
@@ -130,7 +212,6 @@ const Login = () => {
               type="email"
               placeholder="Email Address"
               required
-              autoComplete="email"
               value={formData.email}
               onChange={update('email')}
               disabled={loading}
@@ -142,8 +223,6 @@ const Login = () => {
               type="password"
               placeholder="Password"
               required
-              minLength={6}
-              autoComplete={isLogin ? 'current-password' : 'new-password'}
               value={formData.password}
               onChange={update('password')}
               disabled={loading}
@@ -151,7 +230,7 @@ const Login = () => {
           </div>
 
           {formError && (
-            <div className="auth-error" role="alert">
+            <div className="auth-error">
               <AlertCircle size={16} />
               <span>{formError}</span>
             </div>
@@ -167,9 +246,15 @@ const Login = () => {
           <span>or continue with</span>
         </div>
 
-        <div className="social-auth">
-          <button type="button" className="social-btn"><Search size={20} /> Google</button>
-          <button type="button" className="social-btn"><Code size={20} /> Github</button>
+        <div className="google-auth-wrapper">
+          <GoogleLogin
+            onSuccess={onGoogleSuccess}
+            onError={() => toast.error('Google Sign-In failed')}
+            useOneTap
+            theme="filled_blue"
+            shape="pill"
+            width="100%"
+          />
         </div>
 
         <div className="auth-footer">

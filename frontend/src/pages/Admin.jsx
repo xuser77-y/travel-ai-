@@ -5,10 +5,14 @@ import {
   Shield, Users, Wifi, MapPinned, MessagesSquare, Radio, Activity, BarChart3,
   Trash2, ShieldCheck, ShieldOff, Ban, Search, RefreshCw, AlertTriangle, ArrowLeft,
   Key, Eye, X, Pencil, Save, Calendar, Clock, BookOpen, RotateCcw, Lock, Sparkles,
-  ChevronDown, ChevronRight, CreditCard
+  ChevronDown, ChevronRight, CreditCard, Bell, Check, TrendingUp, PieChart
 } from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, PieChart as RePieChart, Pie, Cell, Legend
+} from 'recharts';
 import useTripStore from '../stores/tripStore';
-import socket from '../lib/socket';
+import socket, { identifySocket } from '../lib/socket';
 import { useToast } from '../components/UI/Toast';
 import AdminPlans from './AdminPlans';
 import { useConfirm } from '../components/UI/ConfirmDialog';
@@ -61,7 +65,7 @@ const Admin = () => {
   const [online, setOnline] = useState({ counts: { totalSockets: 0, onlineUsers: 0, guests: 0 }, sockets: [] });
   const [trips, setTrips] = useState({ items: [], total: 0, page: 1 });
   const [rooms, setRooms] = useState([]);
-  const [posts, setPosts] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [apiUsage, setApiUsage] = useState(null);
   const [prompts, setPrompts] = useState([]);
   // Password gate for the Prompts editor: kept in memory only, cleared when
@@ -89,6 +93,11 @@ const Admin = () => {
     }
     if (user && user.isAdmin === false) {
       navigate('/', { replace: true });
+      return;
+    }
+    // Identify this admin's socket so the server knows who is online.
+    if (user) {
+      identifySocket(user);
     }
   }, [token, user, navigate]);
 
@@ -101,13 +110,22 @@ const Admin = () => {
       setError('');
       try {
         if (section === 'overview' || section === 'online') {
-          const [statsRes, onlineRes] = await Promise.all([
+          const endpoints = [
             axios.get(`${API}/api/admin/stats`, { headers }),
             axios.get(`${API}/api/admin/online`, { headers })
-          ]);
+          ];
+          if (section === 'overview') {
+            endpoints.push(axios.get(`${API}/api/admin/analytics`, { headers }));
+          }
+
+          const results = await Promise.all(endpoints);
           if (cancelled) return;
-          setStats(statsRes.data);
-          setOnline(onlineRes.data);
+          
+          setStats(results[0].data);
+          setOnline(results[1].data);
+          if (section === 'overview') {
+            setAnalytics(results[2].data);
+          }
         }
         if (section === 'users') {
           const res = await axios.get(`${API}/api/admin/users`, {
@@ -126,10 +144,6 @@ const Admin = () => {
         if (section === 'rooms') {
           const res = await axios.get(`${API}/api/admin/rooms`, { headers });
           if (!cancelled) setRooms(res.data);
-        }
-        if (section === 'liveposts') {
-          const res = await axios.get(`${API}/api/admin/liveposts`, { headers });
-          if (!cancelled) setPosts(res.data.items);
         }
         if (section === 'apiusage') {
           const res = await axios.get(`${API}/api/admin/api-usage`, { headers });
@@ -179,32 +193,6 @@ const Admin = () => {
     return () => clearInterval(id);
   }, [token, user?.isAdmin, headers]);
 
-  // Realtime updates for the Live Posts section: subscribe to the same socket
-  // events LiveMap uses so new posts appear immediately and deleted ones
-  // vanish without waiting for a section switch or refresh.
-  useEffect(() => {
-    if (section !== 'liveposts') return undefined;
-
-    const onNew = (post) => {
-      if (!post?._id) return;
-      setPosts((prev) => {
-        // Drop any optimistic duplicate first, then prepend.
-        const without = prev.filter((p) => String(p._id) !== String(post._id));
-        return [post, ...without];
-      });
-    };
-    const onDelete = ({ _id } = {}) => {
-      if (!_id) return;
-      setPosts((prev) => prev.filter((p) => String(p._id) !== String(_id)));
-    };
-
-    socket.on('livemap:new_post', onNew);
-    socket.on('livemap:delete_post', onDelete);
-    return () => {
-      socket.off('livemap:new_post', onNew);
-      socket.off('livemap:delete_post', onDelete);
-    };
-  }, [section]);
 
   // ---- mutations -------------------------------------------------------
   const refreshUsers = async () => {
@@ -307,22 +295,6 @@ const Admin = () => {
     }
   };
 
-  const deletePost = async (id) => {
-    const ok = await confirm({
-      title: 'Delete this live post?',
-      message: 'It will be removed from every traveller’s map immediately.',
-      confirmLabel: 'Delete',
-      variant: 'danger'
-    });
-    if (!ok) return;
-    try {
-      await axios.delete(`${API}/api/admin/liveposts/${id}`, { headers });
-      setPosts((prev) => prev.filter((p) => String(p._id) !== String(id)));
-      toast.success('Post deleted.');
-    } catch (err) {
-      toast.error(err.response?.data?.error || err.message);
-    }
-  };
 
   const resetPassword = async (userId, newPassword) => {
     await axios.post(
@@ -465,7 +437,8 @@ const Admin = () => {
     { id: 'liveposts', label: 'Live Posts', icon: Radio },
     { id: 'apiusage', label: 'API Usage', icon: BarChart3 },
     { id: 'prompts', label: 'AI Prompts', icon: BookOpen },
-    { id: 'plans', label: 'Plans & Billing', icon: CreditCard }
+    { id: 'plans', label: 'Plans & Billing', icon: CreditCard },
+    { id: 'notifications', label: 'Notifications', icon: Bell }
   ];
 
   return (
@@ -514,7 +487,7 @@ const Admin = () => {
           </header>
 
           {section === 'overview' && stats && (
-            <Overview stats={stats} online={online} />
+            <Overview stats={stats} online={online} analytics={analytics} />
           )}
 
           {section === 'users' && (
@@ -552,16 +525,9 @@ const Admin = () => {
 
           {section === 'liveposts' && (
             <LivePostsSection
-              posts={posts}
-              onDelete={deletePost}
-              onRefresh={async () => {
-                try {
-                  const res = await axios.get(`${API}/api/admin/liveposts`, { headers });
-                  setPosts(res.data.items);
-                } catch (err) {
-                  toast.error(err.response?.data?.error || err.message);
-                }
-              }}
+              headers={headers}
+              toast={toast}
+              confirm={confirm}
             />
           )}
 
@@ -588,6 +554,14 @@ const Admin = () => {
                 setPromptsUnlocked(false);
                 setPromptPassword('');
               }}
+            />
+          )}
+
+          {section === 'notifications' && (
+            <NotificationsSection
+              headers={headers}
+              toast={toast}
+              confirm={confirm}
             />
           )}
         </main>
@@ -625,15 +599,176 @@ const Admin = () => {
 // Sub-sections
 // =========================================================================
 
-const Overview = ({ stats, online }) => (
-  <div className="stat-grid">
-    <StatCard label="Total users" value={stats.users} sub={`${stats.admins} admin · ${stats.disabled} disabled`} />
-    <StatCard label="Online now" value={online.counts.onlineUsers} sub={`${online.counts.guests} guests · ${online.counts.totalSockets} sockets`} highlight />
-    <StatCard label="Total trips" value={stats.trips} />
-    <StatCard label="Hubs" value={stats.rooms} sub={`${stats.totalMessages} messages`} />
-    <StatCard label="Live posts" value={stats.livePosts} />
-  </div>
-);
+const Overview = ({ stats, online, analytics }) => {
+  const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+
+  // Prepare data for the growth chart by merging user and trip growth arrays.
+  const growthData = useMemo(() => {
+    if (!analytics?.userGrowth || !analytics?.tripGrowth) return [];
+    const dates = new Set([
+      ...analytics.userGrowth.map(u => u._id),
+      ...analytics.tripGrowth.map(t => t._id)
+    ]);
+    return Array.from(dates).sort().map(date => ({
+      name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      users: analytics.userGrowth.find(u => u._id === date)?.count || 0,
+      trips: analytics.tripGrowth.find(t => t._id === date)?.count || 0
+    }));
+  }, [analytics]);
+
+  const revenueData = useMemo(() => {
+    if (!analytics?.revenueGrowth) return [];
+    return analytics.revenueGrowth.map(item => ({
+      name: new Date(item._id).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      revenue: item.total
+    }));
+  }, [analytics]);
+
+  const currentPlansData = useMemo(() => {
+    if (!analytics?.currentPlans) return [];
+    return analytics.currentPlans.map(item => {
+      const label = item._id ? String(item._id) : 'Free';
+      return {
+        name: label.charAt(0).toUpperCase() + label.slice(1),
+        value: item.count
+      };
+    });
+  }, [analytics]);
+
+  const pieData = useMemo(() => {
+    if (!analytics?.postDistribution) return [];
+    return analytics.postDistribution.map(item => ({
+      name: item._id,
+      value: item.count
+    }));
+  }, [analytics]);
+
+  const totalRevenue = useMemo(() => {
+    if (!analytics?.revenueGrowth) return 0;
+    return analytics.revenueGrowth.reduce((acc, curr) => acc + curr.total, 0);
+  }, [analytics]);
+
+  return (
+    <div className="admin-overview">
+      <div className="stat-grid">
+        <StatCard label="Total users" value={stats.users} sub={`${stats.admins} admin · ${stats.disabled} disabled`} />
+        <StatCard label="Online now" value={online.counts.onlineUsers} sub={`${online.counts.guests} guests · ${online.counts.totalSockets} sockets`} highlight />
+        <StatCard label="30d Revenue" value={`$${totalRevenue.toFixed(2)}`} sub={`${analytics?.planPurchases?.length || 0} sales`} />
+        <StatCard label="Hubs" value={stats.rooms} sub={`${stats.totalMessages} messages`} />
+        <StatCard label="Live posts" value={stats.livePosts} />
+      </div>
+
+      <div className="analytics-grid">
+        <div className="admin-card chart-card revenue-chart">
+          <header className="card-header">
+            <CreditCard size={18} />
+            <h3>Revenue Growth (30d)</h3>
+          </header>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                <Tooltip 
+                  formatter={(value) => [`$${value.toFixed(2)}`, 'Revenue']}
+                  contentStyle={{ backgroundColor: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="#f59e0b" fillOpacity={1} fill="url(#colorRevenue)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="admin-card chart-card plans-chart">
+          <header className="card-header">
+            <Users size={18} />
+            <h3>Current Plan Mix</h3>
+          </header>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={300}>
+              <RePieChart>
+                <Pie
+                  data={currentPlansData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {currentPlansData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                <Legend />
+              </RePieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="analytics-grid second-row">
+        <div className="admin-card chart-card growth-chart">
+          <header className="card-header">
+            <TrendingUp size={18} />
+            <h3>Engagement Growth (30d)</h3>
+          </header>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={growthData}>
+                <defs>
+                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorTrips" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                <Legend iconType="circle" />
+                <Area type="monotone" dataKey="users" stroke="#6366f1" fillOpacity={1} fill="url(#colorUsers)" />
+                <Area type="monotone" dataKey="trips" stroke="#10b981" fillOpacity={1} fill="url(#colorTrips)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="admin-card chart-card distribution-chart">
+          <header className="card-header">
+            <PieChart size={18} />
+            <h3>Post Categories</h3>
+          </header>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={300}>
+              <RePieChart>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                <Legend />
+              </RePieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const StatCard = ({ label, value, sub, highlight }) => (
   <div className={`stat-card ${highlight ? 'is-highlight' : ''}`}>
@@ -916,42 +1051,103 @@ const RoomsSection = ({ rooms, onDelete, onOpenMessages }) => (
   </section>
 );
 
-const LivePostsSection = ({ posts, onDelete, onRefresh }) => (
-  <section className="admin-section">
-    <div className="section-toolbar">
-      <span className="muted">{posts.length} posts · live updates</span>
-      {onRefresh && (
-        <button type="button" className="btn-secondary" onClick={onRefresh}>
-          <RefreshCw size={14} /> Refresh
+const LivePostsSection = ({ headers, toast, confirm }) => {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API}/api/admin/liveposts`, { headers });
+      setPosts(res.data.items || []);
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+
+    const onNew = (post) => {
+      if (!post?._id) return;
+      setPosts((prev) => {
+        const without = prev.filter((p) => String(p._id) !== String(post._id));
+        return [post, ...without];
+      });
+    };
+    const onDeleteEvent = ({ _id } = {}) => {
+      if (!_id) return;
+      setPosts((prev) => prev.filter((p) => String(p._id) !== String(_id)));
+    };
+
+    socket.on('livemap:new_post', onNew);
+    socket.on('livemap:delete_post', onDeleteEvent);
+    return () => {
+      socket.off('livemap:new_post', onNew);
+      socket.off('livemap:delete_post', onDeleteEvent);
+    };
+  }, [headers]);
+
+  const handleDelete = async (id) => {
+    const ok = await confirm({
+      title: 'Delete this live post?',
+      message: 'It will be removed from every traveller’s map immediately.',
+      confirmLabel: 'Delete',
+      variant: 'danger'
+    });
+    if (!ok) return;
+    try {
+      await axios.delete(`${API}/api/admin/liveposts/${id}`, { headers });
+      setPosts((prev) => prev.filter((p) => String(p._id) !== String(id)));
+      toast.success('Post deleted.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message);
+    }
+  };
+
+  return (
+    <section className="admin-section">
+      <div className="section-toolbar">
+        <span className="muted">
+          {loading ? 'Refreshing...' : `${posts.length} posts · live updates`}
+        </span>
+        <button type="button" className="btn-secondary" onClick={fetchPosts} disabled={loading}>
+          <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
         </button>
-      )}
-    </div>
-    <div className="post-grid">
-      {posts.map((p) => (
-        <article key={p._id} className="post-card">
-          <header>
-            <strong>{p.author || 'Anonymous'}</strong>
-            <span className="muted">{fmtRelative(p.createdAt)}</span>
-          </header>
-          <div className="post-meta">
-            {p.type && <span className={`pill pill-${p.sentiment === 'negative' ? 'danger' : p.sentiment === 'positive' ? 'admin' : 'warn'}`}>{p.type}</span>}
-            <span className="muted">▲ {p.upvotes || 0}</span>
-          </div>
-          <p>{p.message || ''}</p>
-          {p.location && (
-            <span className="muted">
-              📍 {p.location.name || `${p.location.lat?.toFixed(2)}, ${p.location.lon?.toFixed(2)}`}
-            </span>
-          )}
-          <button className="icon-btn danger post-delete" onClick={() => onDelete(p._id)}>
-            <Trash2 size={14} /> Delete
-          </button>
-        </article>
-      ))}
-      {posts.length === 0 && <p className="muted">No live posts.</p>}
-    </div>
-  </section>
-);
+      </div>
+      <div className="post-grid">
+        {posts.map((p) => (
+          <article key={p._id} className="post-card">
+            <header>
+              <strong>{p.author || 'Anonymous'}</strong>
+              <span className="muted">{fmtRelative(p.createdAt)}</span>
+            </header>
+            <div className="post-meta">
+              {p.type && (
+                <span className={`pill pill-${p.sentiment === 'negative' ? 'danger' : p.sentiment === 'positive' ? 'admin' : 'warn'}`}>
+                  {p.type}
+                </span>
+              )}
+              <span className="muted">▲ {p.upvotes || 0}</span>
+            </div>
+            <p>{p.message || ''}</p>
+            {p.location && (
+              <span className="muted">
+                📍 {p.location.name || `${p.location.lat?.toFixed(2)}, ${p.location.lon?.toFixed(2)}`}
+              </span>
+            )}
+            <button className="icon-btn danger post-delete" onClick={() => handleDelete(p._id)}>
+              <Trash2 size={14} /> Delete
+            </button>
+          </article>
+        ))}
+        {posts.length === 0 && !loading && <p className="muted">No live posts.</p>}
+      </div>
+    </section>
+  );
+};
 
 const Pagination = ({ page, total, limit, onPage }) => {
   const pages = Math.max(1, Math.ceil(total / limit));
@@ -1627,6 +1823,293 @@ const PromptsSection = ({ prompts, unlocked, onUnlock, onSave, onReset, onLock }
           <PromptCard key={p.key} prompt={p} onSave={onSave} onReset={onReset} />
         ))}
         {prompts.length === 0 && <p className="muted">No prompts registered.</p>}
+      </div>
+    </section>
+  );
+};
+
+const NotificationsSection = ({ headers, toast, confirm }) => {
+  const [form, setForm] = useState({ title: '', message: '', type: 'all', recipients: [], link: '', expiresAt: '' });
+  const [busy, setBusy] = useState(false);
+  const [userQuery, setUserQuery] = useState('');
+  const [foundUsers, setFoundUsers] = useState([]);
+  const [allNotifications, setAllNotifications] = useState([]);
+  const [loadingList, setLoadingList] = useState(false);
+
+  const fetchAll = async () => {
+    try {
+      setLoadingList(true);
+      const res = await axios.get(`${API}/api/notifications/admin`, { headers });
+      setAllNotifications(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAll();
+  }, [headers]);
+
+  useEffect(() => {
+    if (userQuery.length < 2) {
+      setFoundUsers([]);
+      return;
+    }
+    const delay = setTimeout(async () => {
+      try {
+        const res = await axios.get(`${API}/api/admin/users`, {
+          headers,
+          params: { q: userQuery, limit: 10 }
+        });
+        setFoundUsers(res.data.items);
+      } catch (err) {
+        console.error(err);
+      }
+    }, 300);
+    return () => clearTimeout(delay);
+  }, [userQuery, headers]);
+
+  const toggleRecipient = (u) => {
+    setForm(prev => {
+      const exists = prev.recipients.find(r => r._id === u._id);
+      if (exists) {
+        return { ...prev, recipients: prev.recipients.filter(r => r._id !== u._id) };
+      }
+      return { ...prev, recipients: [...prev.recipients, u] };
+    });
+  };
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!form.title || !form.message) return toast.error('Title and message are required.');
+
+    const ok = await confirm({
+      title: 'Send Notification?',
+      message: `This will be sent to ${form.type === 'all' ? 'ALL registered users' : `${form.recipients.length} selected users`}.`,
+      confirmLabel: 'Send now',
+      variant: 'default'
+    });
+    if (!ok) return;
+
+    try {
+      setBusy(true);
+      await axios.post(`${API}/api/notifications/admin`, {
+        ...form,
+        recipients: form.recipients.map(r => r._id),
+        expiresAt: form.expiresAt ? new Date(form.expiresAt) : null
+      }, { headers });
+      toast.success('Notification sent successfully!');
+      setForm({ title: '', message: '', type: 'all', recipients: [], link: '', expiresAt: '' });
+      setUserQuery('');
+      fetchAll();
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteNoti = async (id) => {
+    const ok = await confirm({
+      title: 'Delete Notification?',
+      message: 'This notification will be removed from all users.',
+      confirmLabel: 'Delete',
+      variant: 'danger'
+    });
+    if (!ok) return;
+
+    try {
+      await axios.delete(`${API}/api/notifications/${id}`, { headers });
+      toast.success('Notification deleted.');
+      setAllNotifications(prev => prev.filter(n => n._id !== id));
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message);
+    }
+  };
+
+  return (
+    <section className="admin-section">
+      <div className="admin-card noti-form-card">
+        <header className="card-header">
+          <Bell size={18} />
+          <h3>Broadcast Notification</h3>
+        </header>
+        <form className="noti-admin-form" onSubmit={handleSend}>
+          <div className="noti-form-row">
+            <div className="form-group flex-2">
+              <label>Title</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={e => setForm({ ...form, title: e.target.value })}
+                placeholder="System Update, Special Offer, etc."
+                required
+              />
+            </div>
+            <div className="form-group flex-1">
+              <label>Expires At (optional)</label>
+              <div className="custom-date-input">
+                <Calendar size={16} />
+                <input
+                  type="datetime-local"
+                  value={form.expiresAt}
+                  onChange={e => setForm({ ...form, expiresAt: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Message</label>
+            <textarea
+              value={form.message}
+              onChange={e => setForm({ ...form, message: e.target.value })}
+              placeholder="Enter the notification content..."
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Target Link (optional)</label>
+            <input
+              type="text"
+              value={form.link}
+              onChange={e => setForm({ ...form, link: e.target.value })}
+              placeholder="https://travio.com/worldcup"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Target Audience</label>
+            <div className="radio-group">
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="type"
+                  checked={form.type === 'all'}
+                  onChange={() => setForm({ ...form, type: 'all' })}
+                />
+                All Users
+              </label>
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="type"
+                  checked={form.type === 'specific'}
+                  onChange={() => setForm({ ...form, type: 'specific' })}
+                />
+                Specific Users
+              </label>
+            </div>
+          </div>
+
+          {form.type === 'specific' && (
+            <div className="specific-users-zone">
+              <div className="search-recipients">
+                <Search size={14} />
+                <input
+                  type="text"
+                  value={userQuery}
+                  onChange={e => setUserQuery(e.target.value)}
+                  placeholder="Search users to add..."
+                />
+              </div>
+              
+              {foundUsers.length > 0 && (
+                <div className="found-users-list">
+                  {foundUsers.map(u => (
+                    <button type="button" key={u._id} onClick={() => toggleRecipient(u)} className="found-user-item">
+                      {u.email} {form.recipients.find(r => r._id === u._id) ? <Check size={12} /> : '+'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="selected-recipients">
+                <label>Selected ({form.recipients.length}):</label>
+                <div className="recipients-tags">
+                  {form.recipients.map(r => (
+                    <span key={r._id} className="recipient-tag">
+                      {r.email}
+                      <button type="button" onClick={() => toggleRecipient(r)}><X size={10} /></button>
+                    </span>
+                  ))}
+                  {form.recipients.length === 0 && <span className="muted">No users selected.</span>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="form-actions">
+            <button type="submit" className="btn-primary" disabled={busy}>
+              {busy ? <RefreshCw size={14} className="spin" /> : <Bell size={14} />}
+              {busy ? 'Sending...' : 'Send Notification'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="admin-card history-card" style={{ marginTop: '30px' }}>
+        <header className="card-header">
+          <Clock size={18} />
+          <h3>Sent Notifications</h3>
+        </header>
+        <div className="table-wrapper" style={{ border: 'none' }}>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Notification</th>
+                <th>Audience</th>
+                <th>Expiry</th>
+                <th>Date</th>
+                <th className="col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allNotifications.map((n) => (
+                <tr key={n._id}>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <strong style={{ fontSize: '0.85rem' }}>{n.title}</strong>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>{n.message.slice(0, 40)}...</p>
+                    </div>
+                  </td>
+                  <td>
+                    {n.type === 'all' ? (
+                      <span className="pill pill-admin">All Users</span>
+                    ) : (
+                      <span className="pill pill-warn">{n.recipients?.length || 0} Users</span>
+                    )}
+                  </td>
+                  <td>
+                    {n.expiresAt ? (
+                      <span style={{ fontSize: '0.75rem', color: new Date(n.expiresAt) < new Date() ? '#f87171' : 'var(--text-muted)' }}>
+                        {new Date(n.expiresAt) < new Date() ? 'Expired' : fmtDate(n.expiresAt)}
+                      </span>
+                    ) : 'Never'}
+                  </td>
+                  <td style={{ fontSize: '0.75rem' }}>{fmtDate(n.createdAt)}</td>
+                  <td className="col-actions">
+                    <button
+                      type="button"
+                      className="icon-btn danger"
+                      title="Delete Notification"
+                      onClick={() => deleteNoti(n._id)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {allNotifications.length === 0 && !loadingList && (
+                <tr><td colSpan={5} className="empty-row">No notifications sent yet.</td></tr>
+              )}
+              {loadingList && (
+                <tr><td colSpan={5} className="empty-row">Loading notifications...</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );

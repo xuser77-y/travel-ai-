@@ -16,7 +16,7 @@ const API = 'http://localhost:5000';
 // The JWT is read once at boot — `setAuthToken()` reconnects when it
 // changes (login / logout) so the backend can plan-gate socket events.
 const initialToken = (() => {
-  try { return localStorage.getItem('token') || null; } catch (_) { return null; }
+  try { return localStorage.getItem('travio_token') || null; } catch (_) { return null; }
 })();
 
 export const socket = io(API, {

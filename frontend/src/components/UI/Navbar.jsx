@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Settings as SettingsIcon, Shield, CreditCard, Sparkles
 } from 'lucide-react';
 import useTripStore from '../../stores/tripStore';
+import NotificationDropdown from './NotificationDropdown';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -117,6 +118,8 @@ const Navbar = () => {
           >
             {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+
+          {user && <NotificationDropdown />}
 
           {/* Freemium counter pill — shows the user how many free uses
               they have left across all premium features. Hidden for
