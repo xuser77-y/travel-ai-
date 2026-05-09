@@ -8,7 +8,7 @@ import { fetchAndDownloadReceipt } from '../lib/receiptPdf';
 import PaymentSuccessModal from '../components/Billing/PaymentSuccessModal';
 import './Billing.css';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Plan-card icons. The labels for features come from the server now
 // (`/api/payments/plans` returns `features` map) so the Billing page never

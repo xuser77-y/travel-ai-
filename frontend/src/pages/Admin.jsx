@@ -18,7 +18,7 @@ import AdminPlans from './AdminPlans';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Admin.css';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Light helper to format timestamps consistently across the dashboard.
 const fmtDate = (d) => {
@@ -68,6 +68,7 @@ const Admin = () => {
   const [analytics, setAnalytics] = useState(null);
   const [apiUsage, setApiUsage] = useState(null);
   const [prompts, setPrompts] = useState([]);
+  const [payments, setPayments] = useState({ items: [], total: 0, page: 1 });
   // Password gate for the Prompts editor: kept in memory only, cleared when
   // the user leaves the section. Re-required on every page reload.
   const [promptPassword, setPromptPassword] = useState('');
@@ -153,6 +154,13 @@ const Admin = () => {
           const res = await axios.get(`${API}/api/admin/prompts`, { headers });
           if (!cancelled) setPrompts(res.data.items);
         }
+        if (section === 'payments') {
+          const res = await axios.get(`${API}/api/admin/payments`, {
+            headers,
+            params: { page: payments.page, limit: 20 }
+          });
+          if (!cancelled) setPayments({ items: res.data.items, total: res.data.total, page: res.data.page });
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err.response?.data?.error || err.message);
@@ -164,7 +172,7 @@ const Admin = () => {
     run();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [section, token, user?.isAdmin, userQuery, users.page, trips.page, promptsUnlocked]);
+  }, [section, token, user?.isAdmin, userQuery, users.page, trips.page, payments.page, promptsUnlocked]);
 
   // Lock the Prompts editor whenever the admin navigates to a different
   // section so the in-memory password never lingers across views.
@@ -438,6 +446,7 @@ const Admin = () => {
     { id: 'apiusage', label: 'API Usage', icon: BarChart3 },
     { id: 'prompts', label: 'AI Prompts', icon: BookOpen },
     { id: 'plans', label: 'Plans & Billing', icon: CreditCard },
+    { id: 'payments', label: 'Payments', icon: TrendingUp },
     { id: 'notifications', label: 'Notifications', icon: Bell }
   ];
 
@@ -543,6 +552,13 @@ const Admin = () => {
             <AdminPlans token={token} toast={toast} />
           )}
 
+          {section === 'payments' && (
+            <PaymentsSection
+              data={payments}
+              onPage={(p) => setPayments((prev) => ({ ...prev, page: p }))}
+            />
+          )}
+
           {section === 'prompts' && (
             <PromptsSection
               prompts={prompts}
@@ -626,13 +642,24 @@ const Overview = ({ stats, online, analytics }) => {
 
   const currentPlansData = useMemo(() => {
     if (!analytics?.currentPlans) return [];
-    return analytics.currentPlans.map(item => {
+    const mapped = analytics.currentPlans.map(item => {
       const label = item._id ? String(item._id) : 'Free';
       return {
         name: label.charAt(0).toUpperCase() + label.slice(1),
         value: item.count
       };
     });
+    // Aggregate by name in case of duplicates (e.g. "free" vs null)
+    const aggregated = mapped.reduce((acc, curr) => {
+      const existing = acc.find(x => x.name === curr.name);
+      if (existing) {
+        existing.value += curr.value;
+      } else {
+        acc.push(curr);
+      }
+      return acc;
+    }, []);
+    return aggregated;
   }, [analytics]);
 
   const pieData = useMemo(() => {
@@ -2111,6 +2138,87 @@ const NotificationsSection = ({ headers, toast, confirm }) => {
           </table>
         </div>
       </div>
+    </section>
+  );
+};
+
+// =========================================================================
+// Payments Section
+// =========================================================================
+
+const PaymentsSection = ({ data, onPage }) => {
+  const totalPages = Math.ceil(data.total / (data.limit || 20));
+
+  return (
+    <section className="admin-section">
+      <div className="section-toolbar">
+        <span className="muted">{data.total} total transactions</span>
+      </div>
+
+      <div className="table-wrapper">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>User</th>
+              <th>Plan</th>
+              <th>Amount</th>
+              <th>Provider</th>
+              <th>Status</th>
+              <th>Period End</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.items.map((item) => (
+              <tr key={item._id}>
+                <td>{fmtDate(item.createdAt)}</td>
+                <td>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <strong>{item.userName}</strong>
+                    <small className="muted">{item.userEmail}</small>
+                  </div>
+                </td>
+                <td><span className={`pill pill-${item.plan}`}>{item.plan}</span></td>
+                <td>
+                  <strong>{item.amount} {item.currency}</strong>
+                </td>
+                <td><span className="pill pill-admin">{item.provider}</span></td>
+                <td>
+                  <span className={`pill pill-${item.status === 'completed' ? 'admin' : 'warn'}`}>
+                    {item.status}
+                  </span>
+                </td>
+                <td>{fmtDate(item.periodEnd)}</td>
+              </tr>
+            ))}
+            {data.items.length === 0 && (
+              <tr><td colSpan={7} className="empty-row">No payment history found.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={data.page <= 1}
+            onClick={() => onPage(data.page - 1)}
+          >
+            Previous
+          </button>
+          <span className="page-info">Page {data.page} of {totalPages}</span>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={data.page >= totalPages}
+            onClick={() => onPage(data.page + 1)}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </section>
   );
 };

@@ -6,6 +6,8 @@ import useTripStore from '../../stores/tripStore';
 import { Sparkles, MapPin, Calendar, Wallet, Heart, Check, AlertTriangle, RefreshCw, ArrowLeft, Lock } from 'lucide-react';
 import './Loading.css';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const STEPS = [
   { id: 1, icon: MapPin, label: 'Analyzing your destination', detail: 'Mapping geography and local highlights' },
   { id: 2, icon: Sparkles, label: 'Consulting our AI travel experts', detail: 'Gemini is curating signature experiences' },
@@ -54,7 +56,7 @@ const Loading = () => {
     const generateTrip = async () => {
       try {
         const res = await axios.post(
-          'http://localhost:5000/api/trips/generate',
+          `${API}/api/trips/generate`,
           formData,
           token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
         );

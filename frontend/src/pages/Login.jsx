@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Globe, Mail, Lock, User, ArrowRight, AlertCircle, ShieldCheck, RefreshCw } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
@@ -7,27 +7,42 @@ import useTripStore from '../stores/tripStore';
 import { useToast } from '../components/UI/Toast';
 import './Auth.css';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { login } = useTripStore();
   const toast = useToast();
 
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'signup');
   const [showOtp, setShowOtp] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', password: '', otp: '' });
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Sync state with URL
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    setIsLogin(mode !== 'signup');
+  }, [searchParams]);
+
   const switchMode = () => {
-    setIsLogin((v) => !v);
+    const newMode = isLogin ? 'signup' : 'login';
+    setSearchParams({ mode: newMode });
     setShowOtp(false);
+    setTermsAccepted(false);
     setFormError('');
   };
 
   const update = (field) => (e) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    const val = field === 'terms' ? e.target.checked : e.target.value;
+    if (field === 'terms') {
+      setTermsAccepted(val);
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: val }));
+    }
     if (formError) setFormError('');
   };
 
@@ -79,6 +94,10 @@ const Login = () => {
       setFormError('Please enter your name.');
       return;
     }
+    if (!isLogin && !termsAccepted) {
+      setFormError('You must accept the Terms and Privacy Policy.');
+      return;
+    }
 
     setFormError('');
     setLoading(true);
@@ -107,10 +126,10 @@ const Login = () => {
         setShowOtp(true);
         toast.warning('Please verify your email to continue.');
       } else if (status === 409 && !isLogin) {
-        setIsLogin(true);
+        setSearchParams({ mode: 'login' });
         toast.info('You already have an account. Please sign in.');
       } else if (status === 404 && isLogin) {
-        setIsLogin(false);
+        setSearchParams({ mode: 'signup' });
         toast.info('No account found. Create one to continue.');
       } else {
         const msg = data?.error || 'Something went wrong.';
@@ -228,6 +247,20 @@ const Login = () => {
               disabled={loading}
             />
           </div>
+
+          {!isLogin && (
+            <div className="terms-checkbox">
+              <input 
+                type="checkbox" 
+                id="terms" 
+                checked={termsAccepted}
+                onChange={update('terms')}
+              />
+              <label htmlFor="terms">
+                I accept the <button type="button" className="link-btn" onClick={() => navigate('/terms')}>Terms</button> and <button type="button" className="link-btn" onClick={() => navigate('/privacy')}>Privacy Policy</button>
+              </label>
+            </div>
+          )}
 
           {formError && (
             <div className="auth-error">

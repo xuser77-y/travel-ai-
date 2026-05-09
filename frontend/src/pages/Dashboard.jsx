@@ -10,6 +10,8 @@ import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Dashboard.css';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const formatDateRange = (start, end) => {
   if (!start || !end) return '—';
   const s = new Date(start);
@@ -41,7 +43,7 @@ const Dashboard = () => {
   const fetchTrips = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/trips/user', {
+      const res = await axios.get(`${API}/api/trips/user`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTrips(res.data);
@@ -80,7 +82,7 @@ const Dashboard = () => {
     });
     if (!ok) return;
     try {
-      await axios.delete(`http://localhost:5000/api/trips/${trip._id}`, {
+      await axios.delete(`${API}/api/trips/${trip._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTrips((prev) => prev.filter((t) => t._id !== trip._id));

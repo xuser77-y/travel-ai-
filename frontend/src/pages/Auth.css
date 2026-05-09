@@ -208,6 +208,42 @@ body.light-mode .auth-error {
   width: 100% !important;
 }
 
-.auth-logo.accent {
+.google-auth-wrapper.accent {
   color: var(--accent);
+}
+
+.terms-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: left;
+  margin: 5px 0 10px;
+}
+
+.terms-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.terms-checkbox label {
+  cursor: pointer;
+}
+
+.link-btn {
+  color: var(--primary-light);
+  font-weight: 600;
+  text-decoration: underline;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  color: var(--primary);
 }

@@ -17,8 +17,9 @@ We leverage a sophisticated mesh of free and premium services:
 2.  **Leaflet & OpenStreetMap**: Providing a high-performance, non-commercial mapping solution for venue and POI visualization.
 3.  **Open-Meteo API**: Delivering real-time, forecast-accurate weather data for host cities without API key restrictions.
 4.  **Pexels API**: Dynamic sourcing of high-resolution architectural and landscape photography.
-5.  **Overpass API (OpenStreetMap)**: Programmatic extraction of local points of interest (restaurants, museums, hospitals).
-6.  **Nominatim**: Geocoding and reverse geocoding for precise destination mapping.
+5.  **Overpass API (OpenStreetMap)**: Programmatic extraction of local points of interest.
+6.  **Google OAuth & Nodemailer**: Secure, modern authentication with Social Login and Email OTP verification.
+7.  **Recharts**: High-performance dashboard analytics for platform monitoring.
 
 ---
 
@@ -29,7 +30,11 @@ We leverage a sophisticated mesh of free and premium services:
     - Interactive stadium map with live weather integration.
     - Curated fan archetypes (The Ultimate Fan, Coastal Explorer).
 - **Multilingual UI**: Native support for English, French, and Arabic (RTL).
-- **State-of-the-Art UX**: Premium glassmorphism design with a adaptive sunset-sapphire theme.
+- **Secure Authentication**: Google Social Login + 6-digit Email OTP verification.
+- **Admin Command Center**: Real-time operational dashboard with interactive growth and revenue analytics.
+- **Community Hubs**: Real-time persistent chat rooms with invitation codes and presence tracking.
+- **AI Concierge**: In-app trip refinement assistant for real-time itinerary edits.
+- **Premium UX**: Advanced dark/light mode with Recharts visualization and glassmorphism.
 
 ---
 

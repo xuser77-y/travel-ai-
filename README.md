@@ -30,6 +30,8 @@ The platform ships with five first-class experiences:
 - **axios** for HTTP
 - **i18next** for i18n (EN / FR / AR with RTL)
 - **Lucide React** icons
+- **Recharts** for premium data visualization (Revenue, Growth, Plan Mix)
+- **@react-oauth/google** for social authentication
 - Plain CSS with CSS variables — full **light / dark mode** via `body.light-mode` toggle
 - **In-app `useToast()` and `useConfirm()` providers** that replace every `alert()` and `window.confirm()` across the app
 
@@ -41,6 +43,8 @@ The platform ships with five first-class experiences:
 - **groq-sdk** — LLM provider for itinerary generation, refinement, and live-map area summaries
 - **node-cache** — caches search/photo/POI/weather lookups
 - **API tracker middleware** — counts every `/api/*` call by route + status, keeps a rolling buffer of recent calls for the admin console
+- **nodemailer** for transactional emails (OTP verification)
+- **google-auth-library** for Google OAuth token verification
 - External APIs:
   - **Photon (Komoot)** — primary city autocomplete
   - **Nominatim (OSM)** — fallback geocoding
@@ -117,8 +121,11 @@ Two strict, dedicated endpoints — no more "signup-or-login" magic:
 
 | Method | Path                  | Behaviour |
 |--------|-----------------------|-----------|
-| POST   | `/api/auth/signup`    | Creates an account or returns `409 This email is already registered.` |
-| POST   | `/api/auth/login`     | Verifies credentials, returns `404 No account found...` or `401 Incorrect password.` as appropriate |
+| POST   | `/api/auth/signup`    | Sends 6-digit OTP to email, creates unverified account |
+| POST   | `/api/auth/verify-otp`| Verifies OTP code and activates the account |
+| POST   | `/api/auth/resend-otp`| Renew and resend the verification code |
+| POST   | `/api/auth/login`     | Verifies credentials; blocks unverified emails |
+| POST   | `/api/auth/google`    | One-tap Social Login (Google OAuth) |
 
 - Passwords are hashed with `crypto.scrypt` (`scrypt:<salt>:<hash>` format). Legacy plaintext records upgrade transparently on next successful login.
 - 7-day JWT signed with `JWT_SECRET`.
@@ -211,7 +218,7 @@ Eight sections in one dashboard, all gated by JWT + `user.isAdmin === true` (re-
 
 | Section       | What it shows / does                                                                 |
 |---------------|---------------------------------------------------------------------------------------|
-| **Overview**  | Top-level counts (users, admins, disabled, trips, hubs, live posts, total messages) |
+| **Overview**  | Real-time analytics charts: **Revenue Growth (30d)**, **Current Plan Mix**, **Engagement Growth** (Users/Trips), and **Post Categories** distribution |
 | **Users**     | Search, paginate, promote/demote admin, disable/enable, delete user (and their trips), reset password |
 | **Online now**| Live socket list (user / IP / user-agent / connected-since / socket id), polled every 5 s |
 | **Trips**     | All trips with paginated list, open detail modal, delete trip or single activity     |
@@ -326,6 +333,16 @@ MONGODB_URI=mongodb://localhost:27017/travio
 GROQ_API_KEY=<your_groq_key>
 PEXELS_API_KEY=<your_pexels_key>
 JWT_SECRET=<long_random_string>
+# Google Auth (Social Login)
+GOOGLE_CLIENT_ID=<your_google_client_id>
+# Email OTP (Nodemailer)
+EMAIL_USER=<your_gmail@gmail.com>
+EMAIL_PASS=<your_gmail_app_password>
+```
+
+`frontend/.env`:
+```bash
+VITE_GOOGLE_CLIENT_ID=<your_google_client_id>
 ```
 
 Frontend points to `http://localhost:5000` from `frontend/src/pages/*.jsx` and `frontend/src/lib/socket.js`.
@@ -381,12 +398,14 @@ Get-NetTCPConnection -LocalPort 5000 | Select-Object -ExpandProperty OwningProce
 - **API tracker**: per-route counts + recent-calls buffer powering the `API Usage` admin tab.
 - **Real-time Notifications**: Socket.io delivery, admin broadcasting (Global/Specific), auto-expiry cleanup logic, and a premium navbar dropdown.
 - **Light/Dark**: full overrides for the new admin Prompts editor (lock screen, cards, textareas, badges).
+- **Premium Analytics**: Four interactive Recharts in the Admin Overview tracking Revenue, Plan distribution, and Engagement growth.
+- **Secure Auth**: Google OAuth (Social Login) and Email OTP verification flow for all traditional accounts.
 
 ---
 
 ## 9. Known Limitations
 
-- No email verification, password reset over email, OAuth, or rate limiting (yet).
+- No password reset over email (OTP is for signup only), or rate limiting (yet).
 - Live Map images are stored as base64 inside MongoDB — fine for demos, not for scale (move to S3 / Cloudinary later).
 - Groq rate-limit handling is a simple recursive retry — no exponential backoff.
 - No automated test suite.

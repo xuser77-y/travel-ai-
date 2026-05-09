@@ -22,12 +22,13 @@ import { ConfirmProvider } from './components/UI/ConfirmDialog';
 import FreemiumGate from './components/Billing/FreemiumGate';
 import ScrollToTop from './components/UI/ScrollToTop';
 import Footer from './components/UI/Footer';
+import Legal from './pages/Legal';
 import './App.css';
 
 import useTripStore from './stores/tripStore';
 import { setIdentity, setAuthToken } from './lib/socket';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function App() {
   const { isDarkMode, language, token, user, setUser, logout } = useTripStore();
@@ -119,6 +120,8 @@ function App() {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/billing" element={<Billing />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/terms" element={<Legal mode="terms" />} />
+                <Route path="/privacy" element={<Legal mode="privacy" />} />
               </Routes>
             </main>
             <Footer />

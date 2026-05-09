@@ -114,7 +114,8 @@ const useTripStore = create((set, get) => ({
     const { token } = get();
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:5000/api/payments/subscription', {
+      const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${API}/api/payments/subscription`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) return;

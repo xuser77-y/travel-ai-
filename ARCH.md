@@ -23,7 +23,7 @@
 │  ┌────────────────────────────────────────────────────┐    │
 │  │ Services  (orchestrator, ai, weather, poi, photo,  │    │
 │  │            chat, prompt, password, apiTracker,     │    │
-│  │            onlineTracker, livePost)                │    │
+│  │            onlineTracker, livePost, emailService)  │    │
 │  └────────────────────────────────────────────────────┘    │
 │  ┌────────────────────────────────────────────────────┐    │
 │  │ Mongoose models (User, Trip, ChatRoom, LivePost,   │    │
@@ -59,9 +59,11 @@ The frontend is a single-page Vite app. The backend is a single Express process 
 | **react-leaflet + Leaflet** | All maps (trip route, live map, world cup) |
 | **Framer Motion** | Page transitions and the cinematic landing intro |
 | **Lucide React** | Icon set |
+| **Recharts** | Premium data visualization (Revenue, Growth, Plan Mix) |
+| **@react-oauth/google** | Google social authentication |
 | **i18next** | EN / FR / AR translations with RTL support |
 | **Plain CSS + variables** | Theme tokens, dark/light mode via `body.light-mode` class |
-| **In-app providers** | `ToastProvider`, `ConfirmProvider` (replace native `alert`/`confirm`) |
+| **In-app providers** | `ToastProvider`, `ConfirmProvider`, `GoogleOAuthProvider` |
 
 ### Backend
 | Tech | Role |
@@ -74,6 +76,8 @@ The frontend is a single-page Vite app. The backend is a single Express process 
 | **groq-sdk** | LLM client — `llama-3.3-70b-versatile`, `response_format: json_object` |
 | **node-cache** | In-memory TTL cache for search/photo/POI/weather lookups |
 | **multer** | Multipart upload (live post images → base64 in MongoDB) |
+| **nodemailer** | Transactional emails (OTP verification codes) |
+| **google-auth-library** | Google ID token verification |
 | **axios** | Outbound calls to external APIs |
 | **dotenv** | `.env` loading |
 
@@ -311,6 +315,22 @@ The original PayPal sandbox client is gone (`paypalService.js` is now a deprecat
 2. `GET /api/payments/receipt/:historyId` — returns a serialized receipt (buyer / seller / line items / totals / feature list). The frontend's `lib/receipt.js` builds a self-contained printable HTML page in a popup and auto-fires `window.print()`, so the user gets a PDF via the browser's "Save as PDF" without us shipping a PDF library.
 
 Receipts are also accessible from the purchase-history table (a **Receipt** button per row) for re-printing later.
+
+## 7c. Secure Authentication Subsystem (Google & Email OTP)
+
+The auth layer was upgraded from simple password-checking to a modern multi-factor flow:
+
+1. **Google OAuth (Social Login)**:
+   - Frontend: `@react-oauth/google` provides a "one-tap" or standard button.
+   - Handshake: The browser receives an ID Token from Google and sends it to `POST /api/auth/google`.
+   - Verification: `google-auth-library` verifies the token server-side.
+   - Persistence: If the user doesn't exist, a new verified account is created instantly. If they do, their Google ID is linked.
+
+2. **Email OTP (Traditional Signups)**:
+   - Registration: `POST /api/auth/signup` generates a 6-digit code, sets `isEmailVerified: false`, and saves it to the user doc (`otp`, `otpExpires`).
+   - Delivery: `emailService.js` (Nodemailer) sends a formatted HTML email via Gmail/SMTP.
+   - Verification: `POST /api/auth/verify-otp` validates the code. On success, the account is activated and a JWT is issued.
+   - Gating: `POST /api/auth/login` checks `isEmailVerified` and rejects unverified accounts, prompting them to complete the OTP flow.
 
 The single source of truth is `services/planService.js`:
 - **`PLAN_DEFS`** — id → `{ name, priceMonthly, currency, features[] }`. Mutable in-process so the admin's `PATCH /api/admin/plans/:id` is reflected immediately; persisted to `backend/data/plan-overrides.json` so price edits survive restarts.

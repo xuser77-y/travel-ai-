@@ -11,6 +11,8 @@ import StadiumRouteMap from '../components/WorldCup3D/StadiumRouteMap';
 import StadiumModal from '../components/WorldCup3D/StadiumModal';
 import './WorldCup.css';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // The 3D hero scene is heavy (R3F + custom shaders). Lazy-load it so the
 // rest of the page renders instantly, and skip it entirely on devices that
 // either can't handle WebGL well or have requested reduced motion.
@@ -200,7 +202,7 @@ const WorldCup = () => {
     const fetchWCData = async () => {
       try {
         const res = await axios.get(
-          'http://localhost:5000/api/worldcup/cities',
+          `${API}/api/worldcup/cities`,
           { headers: token ? { Authorization: `Bearer ${token}` } : {} }
         );
         setCities(res.data);
@@ -225,7 +227,7 @@ const WorldCup = () => {
     // Real fan-room data — public endpoint, safe to call without a token.
     // We tolerate failure silently (offline / first boot) and fall back to
     // an empty list rather than show fabricated rooms.
-    axios.get('http://localhost:5000/api/chat/rooms')
+    axios.get(`${API}/api/chat/rooms`)
       .then((res) => {
         const wc = (res.data || []).filter((r) => r.isWorldCupFanRoom);
         setFanRooms(wc);

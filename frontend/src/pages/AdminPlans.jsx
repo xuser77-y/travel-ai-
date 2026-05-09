@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Save, RefreshCw, Star, Check } from 'lucide-react';
 import './AdminPlans.css';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 /**
  * Self-contained "Plans" section embedded inside the Admin page.
@@ -185,15 +185,6 @@ const AdminPlans = ({ token, toast }) => {
         <header className="admin-card-header">
           <h3>Payment provider</h3>
         </header>
-        <p className="admin-help">
-          <strong>Mock</strong> = sandbox / instant fake purchase (great for screenshots and the PFE demo).{' '}
-          <strong>Stripe</strong> = real Stripe Checkout in <em>test mode</em> — works in Morocco
-          for developers, no buyer account needed. Use the test card{' '}
-          <code>4242 4242 4242 4242</code> with any future expiry, any CVC, any postal code.
-          {!paymentCfg.stripeAvailable && (
-            <> &nbsp;<em>(Stripe is not configured — set <code>STRIPE_SECRET_KEY</code> in backend/.env to enable.)</em></>
-          )}
-        </p>
         <div className="provider-toggle">
           <button
             className={`provider-btn ${paymentCfg.provider === 'mock' ? 'active' : ''}`}

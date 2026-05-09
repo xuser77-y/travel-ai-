@@ -11,7 +11,7 @@ import { io } from 'socket.io-client';
  * so the backend can associate the socket with a real user account.
  */
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // The JWT is read once at boot — `setAuthToken()` reconnects when it
 // changes (login / logout) so the backend can plan-gate socket events.

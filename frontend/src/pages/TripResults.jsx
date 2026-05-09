@@ -10,6 +10,8 @@ import { Calendar, MapPin, Users, Info, MessageCircle, Send, X, Sparkles, Clock,
 import axios from 'axios';
 import './TripResults.css';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const TripResults = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -31,7 +33,7 @@ const TripResults = () => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/trips/${id}`, {
+        const res = await axios.get(`${API}/api/trips/${id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         if (!cancelled) setTrip(res.data);
@@ -83,7 +85,7 @@ const TripResults = () => {
       // the JWT or we'll get a 401 and the AI chat shows the generic
       // "I'm sorry, I couldn't process that change" error.
       const res = await axios.post(
-        'http://localhost:5000/api/trips/refine',
+        `${API}/api/trips/refine`,
         { currentTrip: trip, userMessage: chatInput },
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
@@ -192,13 +194,13 @@ const TripResults = () => {
               // Logic to create room for old trips
               try {
                 const res = await axios.post(
-                  `http://localhost:5000/api/trips/refine`,
+                  `${API}/api/trips/refine`,
                   { currentTrip: trip, userMessage: "System: Please initialize a chat room for this trip." },
                   { headers: token ? { Authorization: `Bearer ${token}` } : {} }
                 );
                 if (res.data.updatedTrip) setTrip(res.data.updatedTrip);
               } catch (e) {
-                window.location.href = '/community';
+                navigate('/community');
               }
             }}>
               Initialize Room

@@ -5,6 +5,8 @@ import { Search, MapPin, Sparkles, Loader2, Plane } from 'lucide-react';
 import axios from 'axios';
 import './Planner.css';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // Convert ISO country code (e.g. "MA") to flag emoji
 const codeToFlag = (cc) => {
   if (!cc || cc.length !== 2) return '';
@@ -64,7 +66,7 @@ const Step1Destination = () => {
     setLoad(true);
 
     try {
-      const res = await axios.get(`http://localhost:5000/api/search/proxy?q=${encodeURIComponent(val)}`, {
+      const res = await axios.get(`${API}/api/search/proxy?q=${encodeURIComponent(val)}`, {
         signal: controller.signal
       });
       setSugg(res.data || []);
@@ -156,7 +158,7 @@ const Step1Destination = () => {
     setAiError('');
     setAiSuggestion(null);
     try {
-      const res = await axios.post('http://localhost:5000/api/trips/suggest-destination', {
+      const res = await axios.post(`${API}/api/trips/suggest-destination`, {
         description: desc
       });
       const { destination, reason } = res.data;

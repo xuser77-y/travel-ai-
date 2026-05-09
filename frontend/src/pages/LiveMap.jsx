@@ -13,8 +13,9 @@ import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './LiveMap.css';
 
-const API = 'http://localhost:5000/api/livemap';
-const SOCKET_URL = 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = `${API_BASE}/api/livemap`;
+const SOCKET_URL = API_BASE;
 
 const TYPES = [
   { id: 'positive', label: 'Positive', icon: ThumbsUp, color: '#10b981' },

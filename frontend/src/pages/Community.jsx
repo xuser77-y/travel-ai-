@@ -8,7 +8,7 @@ import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Community.css';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Community = () => {
   const navigate = useNavigate();

@@ -7,7 +7,7 @@ import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Settings.css';
 
-const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Settings = () => {
   const { user, token, setUser, setSubscription, logout } = useTripStore();

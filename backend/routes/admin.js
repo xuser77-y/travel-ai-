@@ -136,7 +136,7 @@ router.get('/analytics', async (req, res) => {
       ]),
       // Current plan distribution (all users)
       User.aggregate([
-        { $group: { _id: '$plan', count: { $sum: 1 } } },
+        { $group: { _id: { $ifNull: ['$plan', 'free'] }, count: { $sum: 1 } } },
         { $sort: { count: -1 } }
       ])
     ]);
@@ -773,6 +773,51 @@ router.post('/users/:id/revoke-trial', async (req, res) => {
       trialLimit: user.trialLimit,
       freeTripsUsed: user.freeTripsUsed
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PAYMENTS — list all subscription history from all users
+// ---------------------------------------------------------------------------
+router.get('/payments', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit, 10) || 20);
+
+    // We need to aggregate across all users to get their subscriptionHistory arrays.
+    const pipeline = [
+      { $unwind: '$subscriptionHistory' },
+      { $sort: { 'subscriptionHistory.createdAt': -1 } },
+      {
+        $project: {
+          _id: '$subscriptionHistory._id',
+          userId: '$_id',
+          userName: '$name',
+          userEmail: '$email',
+          plan: '$subscriptionHistory.plan',
+          amount: '$subscriptionHistory.amount',
+          currency: '$subscriptionHistory.currency',
+          provider: '$subscriptionHistory.provider',
+          status: '$subscriptionHistory.status',
+          createdAt: '$subscriptionHistory.createdAt',
+          periodEnd: '$subscriptionHistory.periodEnd'
+        }
+      },
+      {
+        $facet: {
+          data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+          totalCount: [{ $count: 'count' }]
+        }
+      }
+    ];
+
+    const [results] = await User.aggregate(pipeline);
+    const items = results.data;
+    const total = results.totalCount[0]?.count || 0;
+
+    res.json({ total, page, limit, items });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
