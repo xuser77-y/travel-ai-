@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Check, X, Sparkles, ShieldCheck, Crown, Star, Download, Loader2, FileText, CreditCard } from 'lucide-react';
 import useTripStore from '../stores/tripStore';
+import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../components/UI/Toast';
 import { fetchAndDownloadReceipt } from '../lib/receiptPdf';
 import PaymentSuccessModal from '../components/Billing/PaymentSuccessModal';
@@ -24,6 +25,7 @@ const PLAN_ICONS = {
 // for every paid tier; on success we hand the resulting historyId back up
 // so the parent can immediately offer a printable receipt.
 const PlanCard = ({ plan, current, allFeatures, featureLabels, onBuy, busyId, currency }) => {
+  const { t } = useTranslation();
   const isCurrent = current === plan.id;
   const isFree = plan.id === 'free';
   const isBusy = busyId === plan.id;
@@ -31,21 +33,21 @@ const PlanCard = ({ plan, current, allFeatures, featureLabels, onBuy, busyId, cu
 
   return (
     <div className={`plan-card ${plan.highlight ? 'highlight' : ''} ${isCurrent ? 'current' : ''}`}>
-      {plan.highlight && <span className="plan-badge">Most Popular</span>}
-      {isCurrent && <span className="plan-badge current-badge">Your Plan</span>}
+      {plan.highlight && <span className="plan-badge">{t('billing.mostPopular')}</span>}
+      {isCurrent && <span className="plan-badge current-badge">{t('billing.yourPlan')}</span>}
       <div className="plan-icon">{PLAN_ICONS[plan.id] || <Sparkles size={22} />}</div>
       <h3>{plan.name}</h3>
       <div className="plan-price">
         {isFree ? (
-          <span className="amount">Free</span>
+          <span className="amount">{t('billing.free')}</span>
         ) : plan.priceMonthly > 0 ? (
           <>
             <span className="currency">{plan.currency || currency}</span>
             <span className="amount">{plan.priceMonthly}</span>
-            <span className="period">/ month</span>
+            <span className="period">{t('billing.perMonth')}</span>
           </>
         ) : (
-          <span className="amount tbd">Price TBD</span>
+          <span className="amount tbd">{t('billing.tbd')}</span>
         )}
       </div>
       {plan.description && <p className="plan-desc">{plan.description}</p>}
@@ -60,7 +62,7 @@ const PlanCard = ({ plan, current, allFeatures, featureLabels, onBuy, busyId, cu
             <li key={f} className={has ? 'yes' : 'no'}>
               {has ? <Check size={14} /> : <X size={14} />}
               <span>{featureLabels[f] || f}</span>
-              <em className={`flag ${has ? 'flag-yes' : 'flag-no'}`}>{has ? 'Yes' : 'No'}</em>
+              <em className={`flag ${has ? 'flag-yes' : 'flag-no'}`}>{has ? t('billing.yes') : t('billing.no')}</em>
             </li>
           );
         })}
@@ -73,19 +75,19 @@ const PlanCard = ({ plan, current, allFeatures, featureLabels, onBuy, busyId, cu
           disabled={!plan.priceMonthly || isBusy}
         >
           {isBusy
-            ? <><Loader2 size={14} className="spin" /> Processing…</>
+            ? <><Loader2 size={14} className="spin" /> {t('billing.processing')}</>
             : (plan.priceMonthly
                 ? (
                     <>
                       {plan.provider === 'stripe' && <CreditCard size={14} />}
-                      &nbsp;Buy {plan.name} — {plan.currency || currency} {plan.priceMonthly}
+                      &nbsp;{t('billing.buy')} {plan.name} — {plan.currency || currency} {plan.priceMonthly}
                     </>
                   )
-                : 'Coming soon')}
+                : t('billing.comingSoon'))}
         </button>
       )}
-      {isCurrent && <div className="plan-current-note">Currently active</div>}
-      {isFree && !isCurrent && <div className="plan-current-note">Default for new accounts</div>}
+      {isCurrent && <div className="plan-current-note">{t('billing.currentlyActive')}</div>}
+      {isFree && !isCurrent && <div className="plan-current-note">{t('billing.defaultNew')}</div>}
     </div>
   );
 };
@@ -94,6 +96,7 @@ const Billing = () => {
   const { user, token, setSubscription } = useTripStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const toast = useToast();
   const [plans, setPlans] = useState([]);
   const [featureLabels, setFeatureLabels] = useState({});
@@ -134,7 +137,7 @@ const Billing = () => {
       setAllFeatures(planRes.allFeatures || Object.keys(planRes.features || {}));
       if (sub) setSubscription(sub);
     } catch (err) {
-      toast.error('Could not load pricing');
+      toast.error(t('billing.loadError'));
     } finally {
       setLoading(false);
     }
@@ -157,7 +160,7 @@ const Billing = () => {
     const cleanUrl = () => navigate('/billing', { replace: true });
 
     if (stripeFlag === 'cancel') {
-      toast.error('Stripe checkout cancelled.');
+      toast.error(t('billing.stripeCancel'));
       cleanUrl();
       return;
     }
@@ -178,8 +181,8 @@ const Billing = () => {
           setSubscription(data.subscription);
           toast.success(
             data.alreadyProcessed
-              ? 'Subscription already activated.'
-              : 'Payment confirmed — subscription activated!'
+              ? t('billing.subActivated')
+              : t('billing.payConfirmed')
           );
           // Show the success modal instead of auto-opening a receipt.
           // The user can choose to download the PDF or skip.
@@ -190,7 +193,7 @@ const Billing = () => {
           });
           fetchAll();
         } catch (err) {
-          toast.error(err.response?.data?.error || 'Could not finalize Stripe payment');
+          toast.error(err.response?.data?.error || t('billing.finalizeError'));
         } finally {
           cleanUrl();
         }
@@ -223,7 +226,7 @@ const Billing = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSubscription(data.subscription);
-      toast.success(`You're now on the ${plan.name} plan!`);
+      toast.success(`${t('billing.nowOnPlan')} ${plan.name} ${t('billing.plan')}`);
       setSuccessInfo({
         historyId: data.historyId,
         planName: plan.name,
@@ -233,7 +236,7 @@ const Billing = () => {
       });
       fetchAll();
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Checkout failed');
+      toast.error(err.response?.data?.error || t('billing.checkoutFail'));
     } finally {
       setBusyId(null);
     }
@@ -246,7 +249,7 @@ const Billing = () => {
       await fetchAndDownloadReceipt(API, token, historyId);
     } catch (err) {
       console.error('Receipt error:', err);
-      toast.error('Could not generate the receipt PDF.');
+      toast.error(t('billing.receiptError'));
     }
   };
 
@@ -258,7 +261,7 @@ const Billing = () => {
       await fetchAndDownloadReceipt(API, token, successInfo.historyId);
     } catch (err) {
       console.error('Receipt error:', err);
-      toast.error('Could not generate the receipt PDF.');
+      toast.error(t('billing.receiptError'));
     }
   };
 
@@ -271,24 +274,24 @@ const Billing = () => {
   return (
     <div className="billing-page">
       <header className="billing-header">
-        <h1>Plans &amp; Billing</h1>
-        <p>Pick the plan that matches how you travel. Cancel anytime — each charge covers exactly one month.</p>
+        <h1>{t('billing.title')}</h1>
+        <p>{t('billing.subtitle')}</p>
         {user?.subscription?.plan === 'free' && (
           <div className="trial-banner">
             <strong>{user.subscription.freeTripsRemaining}</strong>
-            &nbsp;of&nbsp;
+            &nbsp;{t('billing.of')}&nbsp;
             <strong>{user.subscription.trialLimit}</strong>
-            &nbsp;free trips remaining
+            &nbsp;{t('billing.freeTripsRem')}
           </div>
         )}
         {user?.subscription?.plan !== 'free' && user?.subscription?.planExpiresAt && (
           <div className="trial-banner">
-            Active until {new Date(user.subscription.planExpiresAt).toLocaleDateString()}
+            {t('billing.activeUntil')} {new Date(user.subscription.planExpiresAt).toLocaleDateString()}
           </div>
         )}
       </header>
 
-      {loading && <div className="billing-loading">Loading plans…</div>}
+      {loading && <div className="billing-loading">{t('billing.loading')}</div>}
 
       {!loading && (
         <div className="plans-grid">
@@ -310,11 +313,11 @@ const Billing = () => {
 
       {user?.subscription?.history?.length > 0 && (
         <section className="history-section">
-          <h2>Purchase history</h2>
+          <h2>{t('billing.history')}</h2>
           <table className="history-table">
             <thead>
               <tr>
-                <th>Date</th><th>Plan</th><th>Amount</th><th>Period</th><th>Status</th><th></th>
+                <th>{t('billing.date')}</th><th>{t('billing.planCol')}</th><th>{t('billing.amount')}</th><th>{t('billing.period')}</th><th>{t('billing.status')}</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -333,9 +336,9 @@ const Billing = () => {
                     <button
                       className="history-receipt-btn"
                       onClick={() => downloadReceipt(h.id)}
-                      title="Download the receipt as PDF"
+                      title={t('billing.downloadReceipt')}
                     >
-                      <Download size={12} /> Receipt
+                      <Download size={12} /> {t('billing.receipt')}
                     </button>
                   </td>
                 </tr>
@@ -346,7 +349,7 @@ const Billing = () => {
       )}
 
       <div className="billing-footer">
-        <Link to="/settings" className="link-muted">Manage account →</Link>
+        <Link to="/settings" className="link-muted">{t('billing.manageAccount')}</Link>
       </div>
 
       <PaymentSuccessModal

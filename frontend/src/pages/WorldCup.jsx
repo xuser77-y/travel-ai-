@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import useTripStore from '../stores/tripStore';
+import { useTranslation } from '../hooks/useTranslation';
 import TiltCard from '../components/WorldCup3D/TiltCard';
 import StadiumRouteMap from '../components/WorldCup3D/StadiumRouteMap';
 import StadiumModal from '../components/WorldCup3D/StadiumModal';
@@ -99,6 +100,7 @@ function ThemedTiles() {
 const WorldCup = () => {
   const navigate = useNavigate();
   const { language: lang, setFormData, resetStore, token } = useTripStore();
+  const { t } = useTranslation();
   const [cities, setCities] = useState([]);
   const [activeCity, setActiveCity] = useState(null);
   const [selectedStadium, setSelectedStadium] = useState(null);
@@ -138,50 +140,6 @@ const WorldCup = () => {
     navigate('/planner');
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
-
-  const translations = {
-    en: {
-      heroTitle: "Magical Morocco.",
-      heroSub: "THE ROAD TO 2030",
-      heroDesc: "Experience the first-ever peri-continental World Cup. Morocco welcomes the world with its legendary hospitality and cinematic landscapes.",
-      arenasTitle: "The Grand Arenas",
-      stadiumsTitle: "Host Stadiums",
-      stadiumsSub: "Six iconic venues, one historic tournament.",
-      itinerariesTitle: "Curated Itineraries",
-      soulTitle: "Discover the Soul of the Kingdom",
-      planJourney: "Plan your Journey",
-      exploreVenues: "Explore Venues",
-      days: "DAYS", hours: "HOURS", mins: "MINS", secs: "SECS"
-    },
-    fr: {
-      heroTitle: "Maroc Magique.",
-      heroSub: "LA ROUTE VERS 2030",
-      heroDesc: "Découvrez la toute première Coupe du Monde péri-continentale. Le Maroc accueille le monde avec son hospitalité légendaire et ses paysages cinématographiques.",
-      arenasTitle: "Les Grandes Arènes",
-      stadiumsTitle: "Stades Hôtes",
-      stadiumsSub: "Six lieux emblématiques, un tournoi historique.",
-      itinerariesTitle: "Itinéraires Organisés",
-      soulTitle: "Découvrez l'Âme du Royaume",
-      planJourney: "Planifier votre voyage",
-      exploreVenues: "Explorer les sites",
-      days: "JOURS", hours: "HEURES", mins: "MINS", secs: "SECS"
-    },
-    ar: {
-      heroTitle: "المغرب الساحر",
-      heroSub: "الطريق إلى 2030",
-      heroDesc: "جرب أول كأس عالم عابر للقارات على الإطلاق. المغرب يرحب بالعالم بضيافته الأسطورية ومناظره الخلابة.",
-      arenasTitle: "الملاعب الكبرى",
-      stadiumsTitle: "الملاعب المستضيفة",
-      stadiumsSub: "ستة أماكن رمزية، بطولة تاريخية واحدة.",
-      itinerariesTitle: "مسارات منسقة",
-      soulTitle: "اكتشف روح المملكة",
-      planJourney: "خطط رحلتك",
-      exploreVenues: "استكشف الملاعب",
-      days: "أيام", hours: "ساعات", mins: "دقائق", secs: "ثواني"
-    }
-  };
-
-  const t = translations[lang] || translations.en;
 
   useEffect(() => {
     // Dynamic Countdown Logic
@@ -262,23 +220,23 @@ const WorldCup = () => {
         )}
         <div className="wc-hero-overlay">
           <div className="wc-hero-content-v2">
-            <span className="road-tag">{t.heroSub}</span>
-            <h1 className="magical-title">{t.heroTitle.split(' ').map((w, i) => <React.Fragment key={i}>{w}<br /></React.Fragment>)}</h1>
-            <p className="magical-desc">{t.heroDesc}</p>
+            <span className="road-tag">{t('worldCup.heroSub')}</span>
+            <h1 className="magical-title">{t('worldCup.heroTitle').split(' ').map((w, i) => <React.Fragment key={i}>{w}<br /></React.Fragment>)}</h1>
+            <p className="magical-desc">{t('worldCup.heroDesc')}</p>
             
             <div className="countdown-group">
-              <div className="cd-item"><strong>{timeLeft.days}</strong><span>{t.days}</span></div>
-              <div className="cd-item"><strong>{timeLeft.hours}</strong><span>{t.hours}</span></div>
-              <div className="cd-item"><strong>{timeLeft.mins}</strong><span>{t.mins}</span></div>
-              <div className="cd-item"><strong>{timeLeft.secs}</strong><span>{t.secs}</span></div>
+              <div className="cd-item"><strong>{timeLeft.days}</strong><span>{t('worldCup.days')}</span></div>
+              <div className="cd-item"><strong>{timeLeft.hours}</strong><span>{t('worldCup.hours')}</span></div>
+              <div className="cd-item"><strong>{timeLeft.mins}</strong><span>{t('worldCup.mins')}</span></div>
+              <div className="cd-item"><strong>{timeLeft.secs}</strong><span>{t('worldCup.secs')}</span></div>
             </div>
 
             <div className="hero-v2-ctas">
-              <button className="btn-primary" onClick={() => navigate('/planner')}>{t.planJourney}</button>
+              <button className="btn-primary" onClick={() => navigate('/planner')}>{t('worldCup.planJourney')}</button>
               <button className="btn-glass" onClick={() => {
                 const el = document.getElementById('host-stadiums');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}>{t.exploreVenues}</button>
+              }}>{t('worldCup.exploreVenues')}</button>
             </div>
           </div>
           <div className="hero-flags">
@@ -300,8 +258,8 @@ const WorldCup = () => {
       {/* Map + Match Preview */}
       <section className="grand-arenas">
         <div className="section-header-v2">
-          <h2 className="section-title-v2">{t.arenasTitle}</h2>
-          <p>Discover the state-of-the-art stadiums hosting the world's greatest stage.</p>
+          <h2 className="section-title-v2">{t('worldCup.arenasTitle')}</h2>
+          <p>{t('worldCup.arenasDesc')}</p>
         </div>
 
         <div className="arenas-container">
@@ -323,9 +281,9 @@ const WorldCup = () => {
                           <div className="mp-photo" style={{ backgroundImage: `url(${city.photoUrl})` }} />
                         )}
                         <div className="mp-body">
-                          <span className="mp-tag">Match Venue</span>
+                          <span className="mp-tag">{t('worldCup.matchVenue')}</span>
                           <h4>{city.stadium}</h4>
-                          <p>{city.name}{city.temp ? ` • ${Math.round(city.temp)}°C today` : ''}</p>
+                          <p>{city.name}{city.temp ? ` • ${Math.round(city.temp)}°C ${t('worldCup.todayTemp')}` : ''}</p>
                           <button
                             className="mp-google-btn"
                             onClick={() => window.open(
@@ -334,7 +292,7 @@ const WorldCup = () => {
                               'noopener,noreferrer'
                             )}
                           >
-                            <ExternalLink size={14} /> Open in Google Maps
+                            <ExternalLink size={14} /> {t('worldCup.openGoogleMaps')}
                           </button>
                         </div>
                       </div>
@@ -345,7 +303,7 @@ const WorldCup = () => {
             ) : (
               <div className="map-skeleton">
                 <Compass size={32} />
-                <p>Loading host cities…</p>
+                <p>{t('worldCup.loadingCities')}</p>
               </div>
             )}
           </div>
@@ -356,17 +314,17 @@ const WorldCup = () => {
               fictional team confrontations. */}
           <div className="match-preview">
             <div className="match-header">
-              <Calendar size={18} /> <span>Tournament Phases</span>
+              <Calendar size={18} /> <span>{t('worldCup.tourneyPhases')}</span>
             </div>
             <div className="match-list">
               <div className="match-item phase-summary">
                 <span className="m-date">{TOURNAMENT_FACTS.startDate.toUpperCase()} → {TOURNAMENT_FACTS.endDate.toUpperCase()}</span>
                 <div className="m-teams phase-headline">
-                  <strong>{TOURNAMENT_FACTS.teams}</strong>&nbsp;teams ·&nbsp;
-                  <strong>{TOURNAMENT_FACTS.totalMatches}</strong>&nbsp;matches
+                  <strong>{TOURNAMENT_FACTS.teams}</strong>&nbsp;{t('worldCup.teams')} ·&nbsp;
+                  <strong>{TOURNAMENT_FACTS.totalMatches}</strong>&nbsp;{t('worldCup.matches')}
                 </div>
                 <span className="m-venue">
-                  Hosted by {TOURNAMENT_FACTS.hostNations.join(', ')} · Centenary openers in {TOURNAMENT_FACTS.centenaryHosts.join(', ')}
+                  {t('worldCup.hostedBy')} {TOURNAMENT_FACTS.hostNations.join(', ')} · {t('worldCup.centenary')} {TOURNAMENT_FACTS.centenaryHosts.join(', ')}
                 </span>
               </div>
               {TOURNAMENT_FACTS.phases.map((p) => (
@@ -378,7 +336,7 @@ const WorldCup = () => {
                 </div>
               ))}
               <p className="phase-note">
-                Match-ups will be confirmed after the official draw. Source: FIFA.
+                {t('worldCup.phaseNote')}
               </p>
             </div>
           </div>
@@ -388,9 +346,9 @@ const WorldCup = () => {
       {/* Stadium Showcase */}
       <section id="host-stadiums" className="stadiums-section">
         <div className="section-header-v2 centered">
-          <span className="st-eyebrow"><Trophy size={14} /> {t.stadiumsTitle.toUpperCase()}</span>
-          <h2 className="section-title-v2">{t.stadiumsTitle}</h2>
-          <p>{t.stadiumsSub}</p>
+          <span className="st-eyebrow"><Trophy size={14} /> {t('worldCup.stadiumsTitle').toUpperCase()}</span>
+          <h2 className="section-title-v2">{t('worldCup.stadiumsTitle')}</h2>
+          <p>{t('worldCup.stadiumsSub')}</p>
         </div>
 
         <div className="stadium-grid">
@@ -427,7 +385,7 @@ const WorldCup = () => {
                         <Users size={14} />
                         <div>
                           <strong>{city.capacity}</strong>
-                          <small>Capacity</small>
+                          <small>{t('worldCup.capacity')}</small>
                         </div>
                       </div>
                     )}
@@ -436,7 +394,7 @@ const WorldCup = () => {
                         <Zap size={14} />
                         <div>
                           <strong>{Math.round(city.temp)}°C</strong>
-                          <small>Today</small>
+                          <small>{t('worldCup.today')}</small>
                         </div>
                       </div>
                     )}
@@ -449,10 +407,10 @@ const WorldCup = () => {
                     </ul>
                   )}
                   {city.architect && (
-                    <p className="sc-architect"><span>Architect</span> {city.architect}</p>
+                    <p className="sc-architect"><span>{t('worldCup.architect')}</span> {city.architect}</p>
                   )}
                   <button className="sc-more-btn">
-                    See More <ArrowRight size={14} />
+                    {t('worldCup.seeMore')} <ArrowRight size={14} />
                   </button>
                 </div>
               </TiltCard>
@@ -461,28 +419,27 @@ const WorldCup = () => {
         </div>
       </section>
 
-      {/* Soul Section */}
       <section className="soul-kingdom">
-        <h2 className="section-title-v2">{t.soulTitle}</h2>
+        <h2 className="section-title-v2">{t('worldCup.soulTitle')}</h2>
         <div className="soul-grid">
           <div className="soul-card main-card" style={{ backgroundImage: `url('/assets/stadiums/imperial_wonders_fes_1777285825388.png')` }}>
             <div className="soul-card-content">
-              <h3>Imperial Wonders</h3>
-              <p>Explore the labyrinthine medinas of Fez.</p>
+              <h3>{t('worldCup.imperialWonders')}</h3>
+              <p>{t('worldCup.imperialDesc')}</p>
             </div>
           </div>
           <div className="soul-right-col">
             <div className="soul-card sub-card" style={{ backgroundImage: `url('/assets/stadiums/moroccan_culinary_arts_1777285908130.png')` }}>
               <div className="soul-card-content">
-                <h3>Culinary Arts</h3>
+                <h3>{t('worldCup.culinaryArts')}</h3>
               </div>
             </div>
             <div className="soul-bottom-row">
               <div className="soul-card mini-card" style={{ backgroundImage: `url('/assets/stadiums/boraq.jpg')` }}>
-                <div className="soul-card-content"><Zap size={24} /><h3>Al Boraq</h3></div>
+                <div className="soul-card-content"><Zap size={24} /><h3>{t('worldCup.alBoraq')}</h3></div>
               </div>
               <div className="soul-card mini-card" style={{ backgroundImage: `url('/assets/stadiums/saharanight.jpg')` }}>
-                <div className="soul-card-content"><Compass size={24} /><h3>Sahara Nights</h3></div>
+                <div className="soul-card-content"><Compass size={24} /><h3>{t('worldCup.saharaNights')}</h3></div>
               </div>
             </div>
           </div>
@@ -496,12 +453,10 @@ const WorldCup = () => {
         <div className="fr-glow" aria-hidden />
         <div className="fr-grid">
           <div className="fr-content">
-            <span className="fr-eyebrow"><MessageCircle size={14} /> COMMUNITY</span>
-            <h2>Join the Fan Rooms</h2>
+            <span className="fr-eyebrow"><MessageCircle size={14} /> {t('worldCup.community')}</span>
+            <h2>{t('worldCup.joinFanRooms')}</h2>
             <p>
-              Coordinate match-day meetups, split hotel bookings, share insider
-              tips and ride together to the stadiums. All rooms below are live
-              — the counts come straight from our community in real time.
+              {t('worldCup.fanRoomsDesc')}
             </p>
 
             <div className="fr-stats">
@@ -509,27 +464,27 @@ const WorldCup = () => {
                 <Users size={18} />
                 <div>
                   <strong>{fanStats.totalFans.toLocaleString()}</strong>
-                  <small>Active fans</small>
+                  <small>{t('worldCup.activeFans')}</small>
                 </div>
               </div>
               <div className="fr-stat">
                 <MessageCircle size={18} />
                 <div>
                   <strong>{fanStats.liveRooms}</strong>
-                  <small>Live fan rooms</small>
+                  <small>{t('worldCup.liveRooms')}</small>
                 </div>
               </div>
               <div className="fr-stat">
                 <Trophy size={18} />
                 <div>
                   <strong>{fanStats.hostCities}</strong>
-                  <small>Host cities</small>
+                  <small>{t('worldCup.hostCities')}</small>
                 </div>
               </div>
             </div>
 
             <button className="fr-cta" onClick={() => navigate('/community')}>
-              Join Community <ArrowRight size={18} />
+              {t('worldCup.joinCommunity')} <ArrowRight size={18} />
             </button>
           </div>
 
@@ -538,9 +493,9 @@ const WorldCup = () => {
               <div className="fr-room-empty">
                 <Sparkles size={18} />
                 <p>
-                  No live fan rooms yet — you could be the first.{' '}
+                  {t('worldCup.noLiveRooms')}{' '}
                   <button className="fr-room-empty-link" onClick={() => navigate('/community')}>
-                    Open a room
+                    {t('worldCup.openRoom')}
                   </button>
                 </p>
               </div>
@@ -558,7 +513,7 @@ const WorldCup = () => {
                   <div className="fr-room-info">
                     <h4>{room.roomName}</h4>
                     <span>
-                      <Users size={11} /> {room.memberCount.toLocaleString()} member{room.memberCount === 1 ? '' : 's'}
+                      <Users size={11} /> {room.memberCount.toLocaleString()} {room.memberCount === 1 ? t('worldCup.member') : t('worldCup.members')}
                       {room.destination ? ` · ${room.destination}` : ''}
                     </span>
                   </div>

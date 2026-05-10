@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { User, Lock, CreditCard, Trash2, Save, ShieldCheck } from 'lucide-react';
 import useTripStore from '../stores/tripStore';
+import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Settings.css';
@@ -12,6 +13,7 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const Settings = () => {
   const { user, token, setUser, setSubscription, logout } = useTripStore();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -32,8 +34,8 @@ const Settings = () => {
         });
         setSubscription(data.subscription);
       })
-      .catch(() => toast.error('Could not load your settings'));
-  }, [token, navigate, setSubscription, toast]);
+      .catch(() => toast.error(t('settings.loadError')));
+  }, [token, navigate, setSubscription, toast, t]);
 
   const saveProfile = async () => {
     setBusy(true);
@@ -51,15 +53,15 @@ const Settings = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setUser({ ...user, name: data.name, subscription: data.subscription });
-      toast.success('Profile saved');
+      toast.success(t('settings.saveSuccess'));
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Could not save profile');
+      toast.error(err.response?.data?.error || t('settings.saveError'));
     } finally { setBusy(false); }
   };
 
   const changePassword = async () => {
-    if (pwd.newPassword !== pwd.confirm) { toast.error('Passwords do not match'); return; }
-    if (pwd.newPassword.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (pwd.newPassword !== pwd.confirm) { toast.error(t('settings.pwdMatchError')); return; }
+    if (pwd.newPassword.length < 6) { toast.error(t('settings.pwdLengthError')); return; }
     setBusy(true);
     try {
       await axios.post(
@@ -67,18 +69,18 @@ const Settings = () => {
         { currentPassword: pwd.currentPassword, newPassword: pwd.newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      toast.success('Password changed');
+      toast.success(t('settings.pwdSuccess'));
       setPwd({ currentPassword: '', newPassword: '', confirm: '' });
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Could not change password');
+      toast.error(err.response?.data?.error || t('settings.pwdError'));
     } finally { setBusy(false); }
   };
 
   const deleteAccount = async () => {
     const ok = await confirm({
-      title: 'Delete account?',
-      message: 'This will permanently remove your account, your trips, and your hub memberships. This cannot be undone.',
-      confirmLabel: 'Delete forever',
+      title: t('settings.delTitle'),
+      message: t('settings.delMsg'),
+      confirmLabel: t('settings.delConfirm'),
       variant: 'danger'
     });
     if (!ok) return;
@@ -86,11 +88,11 @@ const Settings = () => {
       await axios.delete(`${API}/api/settings/account`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success('Your account has been deleted');
+      toast.success(t('settings.delSuccess'));
       logout();
       navigate('/');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Could not delete account');
+      toast.error(err.response?.data?.error || t('settings.delError'));
     }
   };
 
@@ -99,94 +101,94 @@ const Settings = () => {
   return (
     <div className="settings-page">
       <header className="settings-header">
-        <h1>Settings</h1>
-        <p>Manage your profile, password, subscription and account.</p>
+        <h1>{t('settings.title')}</h1>
+        <p>{t('settings.subtitle')}</p>
         {user?.isAdmin && (
           <Link to="/admin" className="admin-shortcut">
-            <ShieldCheck size={14} /> Open Admin Console
+            <ShieldCheck size={14} /> {t('settings.adminShortcut')}
           </Link>
         )}
       </header>
 
       <div className="settings-layout">
         <nav className="settings-tabs">
-          <button className={tab === 'profile' ? 'active' : ''} onClick={() => setTab('profile')}><User size={16}/> Profile</button>
-          <button className={tab === 'password' ? 'active' : ''} onClick={() => setTab('password')}><Lock size={16}/> Password</button>
-          <button className={tab === 'subscription' ? 'active' : ''} onClick={() => setTab('subscription')}><CreditCard size={16}/> Subscription</button>
-          <button className={`danger ${tab === 'danger' ? 'active' : ''}`} onClick={() => setTab('danger')}><Trash2 size={16}/> Danger zone</button>
+          <button className={tab === 'profile' ? 'active' : ''} onClick={() => setTab('profile')}><User size={16}/> {t('settings.tabProfile')}</button>
+          <button className={tab === 'password' ? 'active' : ''} onClick={() => setTab('password')}><Lock size={16}/> {t('settings.tabPassword')}</button>
+          <button className={tab === 'subscription' ? 'active' : ''} onClick={() => setTab('subscription')}><CreditCard size={16}/> {t('settings.tabSubscription')}</button>
+          <button className={`danger ${tab === 'danger' ? 'active' : ''}`} onClick={() => setTab('danger')}><Trash2 size={16}/> {t('settings.tabDanger')}</button>
         </nav>
 
         <section className="settings-panel">
           {tab === 'profile' && (
             <div>
-              <h2>Profile</h2>
-              <label>Name
+              <h2>{t('settings.tabProfile')}</h2>
+              <label>{t('settings.name')}
                 <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </label>
-              <label>Email
+              <label>{t('settings.email')}
                 <input value={user?.email || ''} disabled />
               </label>
-              <label>Bio
+              <label>{t('settings.bio')}
                 <textarea rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
               </label>
-              <label>Preferred currency
+              <label>{t('settings.currency')}
                 <select value={form.preferredCurrency} onChange={(e) => setForm({ ...form, preferredCurrency: e.target.value })}>
                   {['USD', 'EUR', 'GBP', 'MAD', 'JPY', 'CAD', 'AUD'].map((c) => <option key={c}>{c}</option>)}
                 </select>
               </label>
-              <label>Interests (comma separated)
+              <label>{t('settings.interests')}
                 <input value={form.interests} onChange={(e) => setForm({ ...form, interests: e.target.value })} />
               </label>
               <button className="btn-primary" onClick={saveProfile} disabled={busy}>
-                <Save size={14}/> Save profile
+                <Save size={14}/> {t('settings.saveBtn')}
               </button>
             </div>
           )}
 
           {tab === 'password' && (
             <div>
-              <h2>Change password</h2>
-              <label>Current password
+              <h2>{t('settings.changePwd')}</h2>
+              <label>{t('settings.currentPwd')}
                 <input type="password" value={pwd.currentPassword} onChange={(e) => setPwd({ ...pwd, currentPassword: e.target.value })} />
               </label>
-              <label>New password
+              <label>{t('settings.newPwd')}
                 <input type="password" value={pwd.newPassword} onChange={(e) => setPwd({ ...pwd, newPassword: e.target.value })} />
               </label>
-              <label>Confirm new password
+              <label>{t('settings.confirmPwd')}
                 <input type="password" value={pwd.confirm} onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })} />
               </label>
               <button className="btn-primary" onClick={changePassword} disabled={busy}>
-                <Lock size={14}/> Update password
+                <Lock size={14}/> {t('settings.updatePwdBtn')}
               </button>
             </div>
           )}
 
           {tab === 'subscription' && (
             <div>
-              <h2>Subscription</h2>
+              <h2>{t('settings.subSnapshot')}</h2>
               {sub ? (
                 <div className="sub-snapshot">
-                  <div><span>Current plan</span><strong className="cap">{sub.plan}</strong></div>
-                  <div><span>Effective access</span><strong className="cap">{sub.effectivePlan}</strong></div>
-                  <div><span>Renews / expires</span><strong>{sub.planExpiresAt ? new Date(sub.planExpiresAt).toLocaleDateString() : '—'}</strong></div>
-                  <div><span>Free trips remaining</span><strong>{sub.freeTripsRemaining} / {sub.trialLimit}</strong></div>
+                  <div><span>{t('settings.currentPlan')}</span><strong className="cap">{sub.plan}</strong></div>
+                  <div><span>{t('settings.effectiveAccess')}</span><strong className="cap">{sub.effectivePlan}</strong></div>
+                  <div><span>{t('settings.renewsExpires')}</span><strong>{sub.planExpiresAt ? new Date(sub.planExpiresAt).toLocaleDateString() : '—'}</strong></div>
+                  <div><span>{t('settings.freeTrips')}</span><strong>{sub.freeTripsRemaining} / {sub.trialLimit}</strong></div>
                 </div>
-              ) : <p>No subscription info available.</p>}
+              ) : <p>{t('settings.noSub')}</p>}
               <Link to="/billing" className="btn-primary linkish">
-                <CreditCard size={14}/> Manage billing
+                <CreditCard size={14}/> {t('settings.manageBilling')}
               </Link>
             </div>
           )}
 
           {tab === 'danger' && (
             <div>
-              <h2 className="danger-title">Danger zone</h2>
-              <p>Deleting your account is permanent. Your trips, posts and hub memberships will be removed.</p>
+              <h2 className="danger-title">{t('settings.dangerTitle')}</h2>
+              <p>{t('settings.dangerDesc')}</p>
               <button className="btn-danger" onClick={deleteAccount} disabled={user?.isAdmin}>
-                <Trash2 size={14}/> Delete my account
+                <Trash2 size={14}/> {t('settings.delBtn')}
               </button>
               {user?.isAdmin && (
-                <p className="hint">Admins cannot self-delete from here. Demote yourself first or use the database directly.</p>
+                <p className="hint">{t('settings.adminHint')}</p>
               )}
             </div>
           )}

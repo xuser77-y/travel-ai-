@@ -57,7 +57,7 @@ const PremiumHero = ({ t }) => {
             transition={{ duration: 0.7, delay: 0.1 }}
           >
             <Sparkles size={14} />
-            <span>{t.eyebrow}</span>
+            <span>{t('eyebrow')}</span>
           </motion.div>
 
           <motion.h1
@@ -66,9 +66,9 @@ const PremiumHero = ({ t }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            {t.titleA}
+            {t('titleA')}
             <br />
-            <span className="ph-title-grad">{t.titleB}</span>
+            <span className="ph-title-grad">{t('titleB')}</span>
           </motion.h1>
 
           <motion.p
@@ -77,7 +77,7 @@ const PremiumHero = ({ t }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            {t.subtitle}
+            {t('subtitle')}
           </motion.p>
 
           <motion.div
@@ -87,10 +87,10 @@ const PremiumHero = ({ t }) => {
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             <button className="ph-btn primary" onClick={() => navigate('/planner')}>
-              {t.start} <ArrowRight size={18} />
+              {t('start')} <ArrowRight size={18} />
             </button>
             <button className="ph-btn ghost">
-              <Play size={16} fill="currentColor" /> {t.demo}
+              <Play size={16} fill="currentColor" /> {t('demo')}
             </button>
           </motion.div>
 

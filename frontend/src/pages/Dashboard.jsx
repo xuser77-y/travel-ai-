@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import useTripStore from '../stores/tripStore';
+import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Dashboard.css';
@@ -34,6 +35,7 @@ const daysBetween = (start, end) => {
 const Dashboard = () => {
   const { user, token, setTrip } = useTripStore();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const confirm = useConfirm();
   const [trips, setTrips] = useState([]);
@@ -74,10 +76,10 @@ const Dashboard = () => {
     e.stopPropagation();
     const place = trip.destination?.name?.split(',')[0] || 'this trip';
     const ok = await confirm({
-      title: 'Delete trip?',
-      message: `Your trip to ${place} will be permanently removed. This cannot be undone.`,
-      confirmLabel: 'Delete',
-      cancelLabel: 'Keep',
+      title: t('dashboard.deleteTitle'),
+      message: `${t('dashboard.deleteMsg')} ${place} ${t('dashboard.deleteMsg2')}`,
+      confirmLabel: t('dashboard.deleteConfirm'),
+      cancelLabel: t('dashboard.deleteCancel'),
       variant: 'danger'
     });
     if (!ok) return;
@@ -86,7 +88,7 @@ const Dashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTrips((prev) => prev.filter((t) => t._id !== trip._id));
-      toast.success(`Deleted your trip to ${place}.`);
+      toast.success(`${t('dashboard.deletedSuccess')} ${place}.`);
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error(err.response?.data?.error || 'Could not delete trip. Try again.');
@@ -100,11 +102,11 @@ const Dashboard = () => {
     <div className="dashboard-page">
       <div className="dashboard-header">
         <div className="header-content">
-          <p className="welcome-label">Personal Travel Hub</p>
-          <h1>Welcome, {user?.name?.split(' ')[0]}</h1>
+          <p className="welcome-label">{t('dashboard.travelHub')}</p>
+          <h1>{t('dashboard.welcome')} {user?.name?.split(' ')[0]}</h1>
         </div>
         <button className="btn-primary create-new" onClick={() => navigate('/planner')}>
-          <Plus size={20} /> Plan New Adventure
+          <Plus size={20} /> {t('dashboard.planNew')}
         </button>
       </div>
 
@@ -114,28 +116,28 @@ const Dashboard = () => {
           <div className="stat-icon sapphire"><Compass size={24} /></div>
           <div className="stat-info">
             <h3>{trips.length}</h3>
-            <p>Trips Planned</p>
+            <p>{t('dashboard.tripsPlanned')}</p>
           </div>
         </div>
         <div className="stat-card glass-card">
           <div className="stat-icon gold"><MapPin size={24} /></div>
           <div className="stat-info">
             <h3>{uniqueCities}</h3>
-            <p>Cities Explored</p>
+            <p>{t('dashboard.citiesExplored')}</p>
           </div>
         </div>
         <div className="stat-card glass-card">
           <div className="stat-icon blue"><TrendingUp size={24} /></div>
           <div className="stat-info">
             <h3>${Math.round(totalSpent).toLocaleString()}</h3>
-            <p>Travel Value</p>
+            <p>{t('dashboard.travelValue')}</p>
           </div>
         </div>
         <div className="stat-card glass-card">
           <div className="stat-icon purple"><Clock size={24} /></div>
           <div className="stat-info">
-            <h3>2030 Ready</h3>
-            <p>World Cup Prep</p>
+            <h3>{t('dashboard.ready2030')}</h3>
+            <p>{t('dashboard.wcPrep')}</p>
           </div>
         </div>
       </div>
@@ -144,29 +146,29 @@ const Dashboard = () => {
         {/* Recent Trips */}
         <section className="trips-section">
           <div className="section-header">
-            <h2>Recent Itineraries</h2>
-            <button className="view-all">View All</button>
+            <h2>{t('dashboard.recentTrips')}</h2>
+            <button className="view-all">{t('dashboard.viewAll')}</button>
           </div>
 
           <div className="trips-list">
             {loading ? (
               <div className="loading-state">
                 <div className="spinner"></div>
-                <p>Curating your adventures...</p>
+                <p>{t('dashboard.curating')}</p>
               </div>
             ) : error ? (
               <div className="empty-trips glass-card">
                 <Compass size={48} />
-                <h3>Something went wrong</h3>
+                <h3>{t('dashboard.wentWrong')}</h3>
                 <p>{error}</p>
-                <button className="btn-primary" onClick={fetchTrips}>Retry</button>
+                <button className="btn-primary" onClick={fetchTrips}>{t('dashboard.retry')}</button>
               </div>
             ) : trips.length === 0 ? (
               <div className="empty-trips glass-card">
                 <Compass size={48} />
-                <h3>No adventures yet</h3>
-                <p>Your AI-planned itineraries will appear here.</p>
-                <button className="btn-primary" onClick={() => navigate('/planner')}>Start Planning</button>
+                <h3>{t('dashboard.noAdventures')}</h3>
+                <p>{t('dashboard.noAdventuresSub')}</p>
+                <button className="btn-primary" onClick={() => navigate('/planner')}>{t('dashboard.startPlanning')}</button>
               </div>
             ) : (
               trips.map((trip) => {
@@ -195,7 +197,7 @@ const Dashboard = () => {
                     >
                       {!photo && <MapPin size={32} />}
                       <span className={`status-chip status-${trip.status || 'generated'}`}>
-                        {trip.status === 'generated' ? 'Ready' : trip.status || 'Saved'}
+                        {trip.status === 'generated' ? t('dashboard.ready') : trip.status || t('dashboard.saved')}
                       </span>
                     </div>
 
@@ -207,7 +209,7 @@ const Dashboard = () => {
                         </h3>
                         <div className="trip-info-row">
                           <span><Calendar size={14} /> {formatDateRange(trip.dates?.start, trip.dates?.end)}</span>
-                          <span><Clock size={14} /> {dayCount} day{dayCount > 1 ? 's' : ''}</span>
+                          <span><Clock size={14} /> {dayCount} {dayCount > 1 ? t('dashboard.days') : t('dashboard.day')}</span>
                         </div>
                       </div>
                       <div className="trip-meta">
@@ -248,14 +250,14 @@ const Dashboard = () => {
               <div className="large-avatar">{user?.name?.[0]}</div>
               <h3>{user?.name}</h3>
               <p>{user?.email}</p>
-              <button className="btn-secondary-outline">Edit Profile</button>
+              <button className="btn-secondary-outline">{t('dashboard.editProfile')}</button>
             </div>
           </div>
 
           <div className="community-ad glass-card">
-            <h4>Global Chat</h4>
-            <p>Connect with other travelers visiting the same spots.</p>
-            <button className="btn-community" onClick={() => navigate('/community')}>Join Hub</button>
+            <h4>{t('dashboard.globalChat')}</h4>
+            <p>{t('dashboard.globalChatDesc')}</p>
+            <button className="btn-community" onClick={() => navigate('/community')}>{t('dashboard.joinHub')}</button>
           </div>
         </aside>
       </div>

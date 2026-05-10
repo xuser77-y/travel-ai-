@@ -5,6 +5,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import axios from 'axios';
 import useTripStore from '../stores/tripStore';
 import { useToast } from '../components/UI/Toast';
+import { useTranslation } from '../hooks/useTranslation';
 import './Auth.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -13,6 +14,7 @@ const Login = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { login } = useTripStore();
+  const { t } = useTranslation();
   const toast = useToast();
 
   const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'signup');
@@ -56,10 +58,10 @@ const Login = () => {
         otp: formData.otp
       });
       login(res.data.user, res.data.token);
-      toast.success(`Verification successful! Welcome, ${res.data.user.name}!`);
+      toast.success(`${t('auth.verifySuccess')} ${res.data.user.name}!`);
       navigate('/');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Invalid code.');
+      toast.error(err.response?.data?.error || t('auth.invalidCode'));
     } finally {
       setLoading(false);
     }
@@ -70,9 +72,9 @@ const Login = () => {
     setLoading(true);
     try {
       await axios.post(`${API}/api/auth/resend-otp`, { email: formData.email });
-      toast.success('A new code has been sent to your email.');
+      toast.success(t('auth.codeSent'));
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to resend code.');
+      toast.error(err.response?.data?.error || t('auth.resendFailed'));
     } finally {
       setLoading(false);
     }
@@ -83,19 +85,19 @@ const Login = () => {
     if (loading) return;
 
     if (!formData.email || !formData.password) {
-      setFormError('Email and password are required.');
+      setFormError(t('auth.reqEmailPass'));
       return;
     }
     if (formData.password.length < 6) {
-      setFormError('Password must be at least 6 characters.');
+      setFormError(t('auth.reqPassLen'));
       return;
     }
     if (!isLogin && !formData.name.trim()) {
-      setFormError('Please enter your name.');
+      setFormError(t('auth.reqName'));
       return;
     }
     if (!isLogin && !termsAccepted) {
-      setFormError('You must accept the Terms and Privacy Policy.');
+      setFormError(t('auth.reqTerms'));
       return;
     }
 
@@ -112,10 +114,10 @@ const Login = () => {
       
       if (!isLogin) {
         setShowOtp(true);
-        toast.info('Please enter the verification code sent to your email.');
+        toast.info(t('auth.enterCode'));
       } else {
         login(res.data.user, res.data.token);
-        toast.success(`Welcome back, ${res.data.user.name}!`);
+        toast.success(`${t('auth.welcomeBack')} ${res.data.user.name}!`);
         navigate('/');
       }
     } catch (err) {
@@ -124,15 +126,15 @@ const Login = () => {
 
       if (data?.unverified) {
         setShowOtp(true);
-        toast.warning('Please verify your email to continue.');
+        toast.warning(t('auth.verifyToContinue'));
       } else if (status === 409 && !isLogin) {
         setSearchParams({ mode: 'login' });
-        toast.info('You already have an account. Please sign in.');
+        toast.info(t('auth.alreadyHaveAccount'));
       } else if (status === 404 && isLogin) {
         setSearchParams({ mode: 'signup' });
-        toast.info('No account found. Create one to continue.');
+        toast.info(t('auth.noAccountFound'));
       } else {
-        const msg = data?.error || 'Something went wrong.';
+        const msg = data?.error || t('auth.somethingWentWrong');
         setFormError(msg);
         toast.error(msg);
       }
@@ -148,10 +150,10 @@ const Login = () => {
         credential: response.credential
       });
       login(res.data.user, res.data.token);
-      toast.success(`Success! Welcome, ${res.data.user.name}!`);
+      toast.success(`${t('auth.googleSuccess')} ${res.data.user.name}!`);
       navigate('/');
     } catch (err) {
-      toast.error('Google authentication failed.');
+      toast.error(t('auth.googleFailed'));
     } finally {
       setLoading(false);
     }
@@ -163,15 +165,15 @@ const Login = () => {
         <div className="auth-container glass-card">
           <div className="auth-header">
             <ShieldCheck className="auth-logo accent" size={48} />
-            <h2>Verify Your Email</h2>
-            <p>We've sent a 6-digit code to <strong>{formData.email}</strong></p>
+            <h2>{t('auth.verifyEmail')}</h2>
+            <p>{t('auth.verifyDesc')} <strong>{formData.email}</strong></p>
           </div>
 
           <form className="auth-form" onSubmit={handleOtpVerify}>
             <div className="input-group">
               <input
                 type="text"
-                placeholder="6-digit code"
+                placeholder={t('auth.otpLabel')}
                 maxLength={6}
                 required
                 className="otp-input"
@@ -181,16 +183,16 @@ const Login = () => {
               />
             </div>
             <button type="submit" className="btn-primary auth-submit" disabled={loading || formData.otp.length < 6}>
-              {loading ? 'Verifying…' : 'Verify Code'}
+              {loading ? '...' : t('auth.verifyBtn')}
             </button>
           </form>
 
           <div className="auth-footer">
             <button type="button" className="resend-btn" onClick={handleResendOtp} disabled={loading}>
-              <RefreshCw size={14} /> Resend Code
+              <RefreshCw size={14} /> {t('auth.resendCode')}
             </button>
             <button type="button" className="text-btn" onClick={() => setShowOtp(false)}>
-              Back to {isLogin ? 'Login' : 'Signup'}
+              {t('auth.back')}
             </button>
           </div>
         </div>
@@ -203,11 +205,9 @@ const Login = () => {
       <div className="auth-container glass-card">
         <div className="auth-header">
           <Globe className="auth-logo" size={40} />
-          <h2>{isLogin ? 'Welcome Back' : 'Join Travio'}</h2>
+          <h2>{isLogin ? t('auth.loginTitle') : t('auth.signupTitle')}</h2>
           <p>
-            {isLogin
-              ? 'Enter your details to access your trips'
-              : 'Start your journey with AI-powered planning'}
+            {isLogin ? t('auth.loginSub') : t('auth.signupSub')}
           </p>
         </div>
 
@@ -217,7 +217,7 @@ const Login = () => {
               <User className="input-icon" size={18} />
               <input
                 type="text"
-                placeholder="Full Name"
+                placeholder={t('auth.nameLabel')}
                 required
                 value={formData.name}
                 onChange={update('name')}
@@ -229,7 +229,7 @@ const Login = () => {
             <Mail className="input-icon" size={18} />
             <input
               type="email"
-              placeholder="Email Address"
+              placeholder={t('auth.emailLabel')}
               required
               value={formData.email}
               onChange={update('email')}
@@ -240,7 +240,7 @@ const Login = () => {
             <Lock className="input-icon" size={18} />
             <input
               type="password"
-              placeholder="Password"
+              placeholder={t('auth.passwordLabel')}
               required
               value={formData.password}
               onChange={update('password')}
@@ -257,7 +257,7 @@ const Login = () => {
                 onChange={update('terms')}
               />
               <label htmlFor="terms">
-                I accept the <button type="button" className="link-btn" onClick={() => navigate('/terms')}>Terms</button> and <button type="button" className="link-btn" onClick={() => navigate('/privacy')}>Privacy Policy</button>
+                {t('auth.acceptTerms')} <button type="button" className="link-btn" onClick={() => navigate('/terms')}>{t('auth.termsLink')}</button> {t('auth.and')} <button type="button" className="link-btn" onClick={() => navigate('/privacy')}>{t('auth.privacyLink')}</button>
               </label>
             </div>
           )}
@@ -270,7 +270,7 @@ const Login = () => {
           )}
 
           <button type="submit" className="btn-primary auth-submit" disabled={loading}>
-            {loading ? 'Processing…' : isLogin ? 'Sign In' : 'Create Account'}
+            {loading ? '...' : isLogin ? t('auth.loginBtn') : t('auth.signupBtn')}
             {!loading && <ArrowRight size={18} />}
           </button>
         </form>
@@ -292,9 +292,9 @@ const Login = () => {
 
         <div className="auth-footer">
           <p>
-            {isLogin ? "Don't have an account?" : 'Already have an account?'}
+            {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
             <button type="button" onClick={switchMode}>
-              {isLogin ? 'Sign Up' : 'Sign In'}
+              {isLogin ? t('auth.signupBtn') : t('auth.loginBtn')}
             </button>
           </p>
         </div>

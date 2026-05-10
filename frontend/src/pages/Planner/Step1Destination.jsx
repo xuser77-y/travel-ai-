@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import useTripStore from '../../stores/tripStore';
 import { Search, MapPin, Sparkles, Loader2, Plane } from 'lucide-react';
 import axios from 'axios';
+import { useTranslation } from '../../hooks/useTranslation';
 import './Planner.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -16,6 +17,7 @@ const codeToFlag = (cc) => {
 const Step1Destination = () => {
   const navigate = useNavigate();
   const { token, formData, setFormData } = useTripStore();
+  const { t } = useTranslation();
   const [startQuery, setStartQuery] = useState(formData.startCity || '');
   const [destQuery, setDestQuery] = useState(formData.destination.name || '');
   const [startSuggestions, setStartSuggestions] = useState([]);
@@ -196,9 +198,9 @@ const Step1Destination = () => {
   return (
     <div className="planner-step glass-card">
       <div className="step-header">
-        <span className="step-indicator">Step 1 of 4</span>
-        <h2>Where do you want to go?</h2>
-        <p>Choose your route or let our AI surprise you with a recommendation.</p>
+        <span className="step-indicator">{t('planner.step1Of4')}</span>
+        <h2>{t('planner.whereToGo')}</h2>
+        <p>{t('planner.step1Sub')}</p>
       </div>
 
       <div className="planner-content">
@@ -206,12 +208,12 @@ const Step1Destination = () => {
           <div className="search-container">
             {/* Start City Input */}
             <div className="input-group-wrapper" style={{ position: 'relative', marginBottom: '30px' }}>
-              <label className="step-label">Where are you starting from?</label>
+              <label className="step-label">{t('planner.startFrom')}</label>
               <div className="input-wrapper">
                 <Plane className="input-icon" size={18} />
                 <input
                   type="text"
-                  placeholder="Origin city (e.g. London, Dubai...)"
+                  placeholder={t('planner.originPlaceholder')}
                   value={startQuery}
                   onChange={(e) => handleSearch(e.target.value, 'start')}
                   onKeyDown={(e) => handleKeyDown(e, 'start')}
@@ -243,7 +245,7 @@ const Step1Destination = () => {
                       );
                     })
                   ) : (
-                    <li className="sugg-empty">No matches for "{startFetched}"</li>
+                    <li className="sugg-empty">{t('planner.noMatches')} "{startFetched}"</li>
                   )}
                 </ul>
               )}
@@ -251,12 +253,12 @@ const Step1Destination = () => {
 
             {/* Destination City Input */}
             <div className="input-group-wrapper" style={{ position: 'relative' }}>
-              <label className="step-label">Where do you want to go?</label>
+              <label className="step-label">{t('planner.whereToGo')}</label>
               <div className="input-wrapper">
                 <Search className="input-icon" />
                 <input
                   type="text"
-                  placeholder="Destination city (e.g. Casablanca, Paris...)"
+                  placeholder={t('planner.destPlaceholder')}
                   value={destQuery}
                   onChange={(e) => handleSearch(e.target.value, 'dest')}
                   onKeyDown={(e) => handleKeyDown(e, 'dest')}
@@ -288,7 +290,7 @@ const Step1Destination = () => {
                       );
                     })
                   ) : (
-                    <li className="sugg-empty">No matches for "{destFetched}"</li>
+                    <li className="sugg-empty">{t('planner.noMatches')} "{destFetched}"</li>
                   )}
                 </ul>
               )}
@@ -297,7 +299,7 @@ const Step1Destination = () => {
         ) : (
           <div className="ai-input-container">
             <textarea
-              placeholder="Describe your dream trip (e.g. 'I want a sunny beach destination with great seafood and historical sites')"
+              placeholder={t('planner.aiPlaceholder')}
               value={aiDescription}
               onChange={(e) => { setAiDescription(e.target.value); setAiError(''); }}
               disabled={aiLoading}
@@ -309,9 +311,9 @@ const Step1Destination = () => {
               disabled={aiLoading || aiDescription.trim().length < 5}
             >
               {aiLoading ? (
-                <><Loader2 size={16} className="spin" /> Picking the perfect city…</>
+                <><Loader2 size={16} className="spin" /> {t('planner.pickingCity')}</>
               ) : (
-                <><Sparkles size={16} /> {aiSuggestion ? 'Try a different city' : 'Find my destination'}</>
+                <><Sparkles size={16} /> {aiSuggestion ? t('planner.tryDifferent') : t('planner.findMyDest')}</>
               )}
             </button>
 
@@ -328,7 +330,7 @@ const Step1Destination = () => {
                   {aiSuggestion.reason && <p className="ai-reason">"{aiSuggestion.reason}"</p>}
                 </div>
                 <button type="button" className="ai-suggestion-clear" onClick={clearAiSuggestion}>
-                  Change
+                  {t('planner.change')}
                 </button>
               </div>
             )}
@@ -343,7 +345,7 @@ const Step1Destination = () => {
           }}
         >
           <Sparkles size={18} className={isAiMode ? 'active' : ''} />
-          <span>{isAiMode ? "Back to manual search" : "Let AI choose for me"}</span>
+          <span>{isAiMode ? t('planner.backToManual') : t('planner.letAiChoose')}</span>
         </div>
       </div>
 
@@ -353,7 +355,7 @@ const Step1Destination = () => {
           onClick={handleNext}
           disabled={isAiMode ? !aiSuggestion : !destQuery}
         >
-          Next Step
+          {t('planner.nextStep')}
         </button>
       </div>
     </div>

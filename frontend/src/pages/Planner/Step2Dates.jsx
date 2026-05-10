@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import useTripStore from '../../stores/tripStore';
+import { useTranslation } from '../../hooks/useTranslation';
 import { Users, User, Heart, Home, Calendar as CalendarIcon } from 'lucide-react';
 import './Planner.css';
 
@@ -31,6 +32,7 @@ const diffDays = (start, end) => {
 const Step2Dates = () => {
   const navigate = useNavigate();
   const { formData, setFormData } = useTripStore();
+  const { t } = useTranslation();
   const today = new Date().toISOString().split('T')[0];
 
   // The check-out date is bounded to start + (MAX_TRIP_DAYS - 1) so that
@@ -46,10 +48,10 @@ const Step2Dates = () => {
   const tooLong = tripDays != null && tripDays > MAX_TRIP_DAYS;
 
   const travelerTypes = [
-    { id: 'solo', label: 'Solo', icon: <User size={30} />, desc: 'Single adventurer' },
-    { id: 'couple', label: 'Couple', icon: <Heart size={30} />, desc: 'Perfect for two' },
-    { id: 'family', label: 'Family', icon: <Home size={30} />, desc: 'Fun for all ages' },
-    { id: 'group', label: 'Group', icon: <Users size={30} />, desc: 'The more, the merrier' }
+    { id: 'solo', label: t('planner.solo'), icon: <User size={30} />, desc: t('planner.soloDesc') },
+    { id: 'couple', label: t('planner.couple'), icon: <Heart size={30} />, desc: t('planner.coupleDesc') },
+    { id: 'family', label: t('planner.family'), icon: <Home size={30} />, desc: t('planner.familyDesc') },
+    { id: 'group', label: t('planner.group'), icon: <Users size={30} />, desc: t('planner.groupDesc') }
   ];
 
   // Setting a check-in that's after the current check-out (or that would
@@ -79,15 +81,15 @@ const Step2Dates = () => {
   return (
     <div className="planner-step glass-card">
       <div className="step-header">
-        <span className="step-indicator">Step 2 of 4</span>
-        <h2>When and with whom?</h2>
-        <p>Set your travel dates and choose your traveler type.</p>
+        <span className="step-indicator">{t('planner.step2Of4')}</span>
+        <h2>{t('planner.whenAndWho')}</h2>
+        <p>{t('planner.step2Sub')}</p>
       </div>
 
       <div className="planner-content">
         <div className="date-inputs-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '12px' }}>
           <div className="input-group">
-            <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.8rem', opacity: 0.7 }}>Check-in</label>
+            <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.8rem', opacity: 0.7 }}>{t('planner.checkIn')}</label>
             <div className="input-wrapper">
               <CalendarIcon className="input-icon" size={20} />
               <input
@@ -100,10 +102,10 @@ const Step2Dates = () => {
           </div>
           <div className="input-group">
             <label style={{ display: 'block', marginBottom: '10px', fontSize: '0.8rem', opacity: 0.7 }}>
-              Check-out
+              {t('planner.checkOut')}
               {formData.dates.start && (
                 <span style={{ marginLeft: 8, opacity: 0.55 }}>
-                  (max {MAX_TRIP_DAYS} days)
+                  {t('planner.maxDays')}
                 </span>
               )}
             </label>
@@ -133,13 +135,13 @@ const Step2Dates = () => {
         >
           {tripDays != null && (
             tooLong
-              ? `Trips are limited to ${MAX_TRIP_DAYS} days — please pick an earlier check-out.`
-              : `${tripDays} day${tripDays === 1 ? '' : 's'} selected.`
+              ? t('planner.tooLong')
+              : `${tripDays} ${tripDays === 1 ? t('planner.daySelected') : t('planner.daysSelected')}`
           )}
         </div>
 
         <div className="traveler-section">
-          <label style={{ display: 'block', marginBottom: '20px', fontWeight: 700, fontSize: '1.1rem' }}>Who is traveling?</label>
+          <label style={{ display: 'block', marginBottom: '20px', fontWeight: 700, fontSize: '1.1rem' }}>{t('planner.whoTraveling')}</label>
           <div className="cards-grid">
             {travelerTypes.map((type) => (
               <div 
@@ -157,13 +159,13 @@ const Step2Dates = () => {
       </div>
 
       <div className="step-footer">
-        <button className="btn-secondary" onClick={() => navigate('/planner/step1')}>Back</button>
+        <button className="btn-secondary" onClick={() => navigate('/planner/step1')}>{t('planner.back')}</button>
         <button
           className="btn-primary"
           onClick={handleNext}
           disabled={!formData.dates.start || !formData.dates.end || tooLong}
         >
-          Next Step
+          {t('planner.nextStep')}
         </button>
       </div>
     </div>

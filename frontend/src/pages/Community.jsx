@@ -4,6 +4,7 @@ import { Send, Users, MapPin, Trophy, Globe2, LogOut, Lock, Sparkles, KeyRound }
 import axios from 'axios';
 import useTripStore from '../stores/tripStore';
 import socket from '../lib/socket';
+import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './Community.css';
@@ -19,6 +20,7 @@ const Community = () => {
   // global flow gracefully when state is empty (direct nav to /community).
   const location = useLocation();
   const navRoomId = location.state?.roomId || null;
+  const { t } = useTranslation();
   const toast = useToast();
   const confirm = useConfirm();
   const {
@@ -202,7 +204,7 @@ const Community = () => {
       setSelectedRoomId(roomId);
     } catch (err) {
       console.error('Join failed:', err);
-      toast.error(err.response?.data?.error || 'Could not join hub.');
+      toast.error(err.response?.data?.error || t('community.joinError'));
     } finally {
       setBusy(false);
     }
@@ -213,10 +215,10 @@ const Community = () => {
     if (!token) return;
     const room = availableRooms.find((r) => r._id === roomId);
     const ok = await confirm({
-      title: `Leave “${room?.roomName || 'this hub'}”?`,
-      message: 'You can rejoin anytime if it is public, or use the invite code to come back.',
-      confirmLabel: 'Leave hub',
-      cancelLabel: 'Stay',
+      title: `${t('community.leaveTitle')} “${room?.roomName || 'this hub'}”?`,
+      message: t('community.leaveMsg'),
+      confirmLabel: t('community.leaveBtn'),
+      cancelLabel: t('community.stayBtn'),
       variant: 'danger'
     });
     if (!ok) return;
@@ -250,7 +252,7 @@ const Community = () => {
       }
     } catch (err) {
       console.error('Leave failed:', err);
-      toast.error(err.response?.data?.error || 'Could not leave hub.');
+      toast.error(err.response?.data?.error || t('community.leaveError'));
     } finally {
       setBusy(false);
     }
@@ -271,7 +273,7 @@ const Community = () => {
       (r) => (r.inviteCode || '').toUpperCase() === code
     );
     if (!room) {
-      setCodeError('No hub found for that code.');
+      setCodeError(t('community.noHubCode'));
       return;
     }
     if (joinedHubs.includes(String(room._id))) {
@@ -314,16 +316,16 @@ const Community = () => {
         <div className="room-info">
           <h4>
             {room.roomName}
-            {room.isGlobalDefault && <span className="room-tag default">Default</span>}
-            {joined && !room.isGlobalDefault && <span className="room-tag joined">Joined</span>}
+            {room.isGlobalDefault && <span className="room-tag default">{t('community.defaultTag')}</span>}
+            {joined && !room.isGlobalDefault && <span className="room-tag joined">{t('community.joinedTag')}</span>}
             {isFanLocked && (
-              <span className="room-tag locked"><Lock size={10} /> Fans only</span>
+              <span className="room-tag locked"><Lock size={10} /> {t('community.fansOnlyTag')}</span>
             )}
           </h4>
           <p>
             {room.destination}
             {room.destination ? ' · ' : ''}
-            <span className="member-mini" title={`${count} member${count === 1 ? '' : 's'}`}>
+            <span className="member-mini" title={`${count} ${count === 1 ? t('community.member') : t('community.members')}`}>
               <Users size={10} /> {count}
             </span>
           </p>
@@ -337,8 +339,8 @@ const Community = () => {
       <div className="community-container">
         <aside className="community-sidebar glass-card">
           <div className="sidebar-header">
-            <h3>My Hubs</h3>
-            <p className="sidebar-sub">Join once — we'll remember you next time.</p>
+            <h3>{t('community.myHubs')}</h3>
+            <p className="sidebar-sub">{t('community.myHubsSub')}</p>
           </div>
 
           <form className="join-by-code" onSubmit={handleCodeSubmit}>
@@ -346,7 +348,7 @@ const Community = () => {
               <KeyRound size={14} />
               <input
                 type="text"
-                placeholder="Enter invite code"
+                placeholder={t('community.invitePlaceholder')}
                 value={inviteCode}
                 onChange={(e) => {
                   setInviteCode(e.target.value.toUpperCase());
@@ -360,7 +362,7 @@ const Community = () => {
                 className="btn-code-go"
                 disabled={!inviteCode.trim() || busy}
               >
-                Join
+                {t('community.joinCodeBtn')}
               </button>
             </div>
             {codeError && <span className="code-error">{codeError}</span>}
@@ -375,7 +377,7 @@ const Community = () => {
               >
                 <div className="room-icon"><MapPin size={18} /></div>
                 <div className="room-info">
-                  <h4>My Trip Hub</h4>
+                  <h4>{t('community.myTripHub')}</h4>
                   <p>{currentTrip.destination?.name?.split(',')[0]}</p>
                 </div>
               </button>
@@ -383,7 +385,7 @@ const Community = () => {
 
             {myJoinedHubs.length > 0 && (
               <>
-                <div className="room-group-label">Travel Hubs</div>
+                <div className="room-group-label">{t('community.travelHubs')}</div>
                 {myJoinedHubs.map((room) =>
                   renderRoomItem(room, { icon: room.isGlobalDefault ? Globe2 : Users })
                 )}
@@ -392,33 +394,33 @@ const Community = () => {
 
             {fanRooms.length > 0 && (
               <>
-                <div className="room-group-label fan">Fan Rooms</div>
+                <div className="room-group-label fan">{t('community.fanRooms')}</div>
                 {fanRooms.map((room) => renderRoomItem(room, { icon: Trophy }))}
               </>
             )}
 
             {myJoinedHubs.length === 0 && !currentTrip?.chatRoom && fanRooms.length === 0 && (
               <p className="sidebar-empty">
-                You haven't joined any hubs yet. Use an invite code above to join one.
+                {t('community.emptySidebar')}
               </p>
             )}
           </div>
 
           <div className="people-list-section">
-            <label>You</label>
+            <label>{t('community.you')}</label>
             {user ? (
               <div className="person-item">
                 <div className="avatar-circle-small">{user?.name?.[0] || 'U'}</div>
                 <div className="person-info">
                   <span className="person-name">{user?.name}</span>
                   <span className="person-status">
-                    {joinedHubs.length} hub{joinedHubs.length === 1 ? '' : 's'} joined
+                    {joinedHubs.length} {joinedHubs.length === 1 ? t('community.hubJoined') : t('community.hubsJoined')}
                   </span>
                 </div>
               </div>
             ) : (
               <button className="btn-link-login" onClick={() => navigate('/login')}>
-                Sign in to join hubs
+                {t('community.signInPrompt')}
               </button>
             )}
           </div>
@@ -427,7 +429,7 @@ const Community = () => {
         <main className="chat-area glass-card">
           <header className="chat-header">
             <div className="chat-info">
-              <h4>{activeRoom?.roomName || 'Select a Hub'}</h4>
+              <h4>{activeRoom?.roomName || t('community.selectHub')}</h4>
               {activeRoom && (
                 <div className="chat-info-meta">
                   {activeRoom.destination && <span>{activeRoom.destination}</span>}
@@ -436,14 +438,14 @@ const Community = () => {
                     <Users size={12} />
                     {activeRoom.memberCount || 0}
                     {' '}
-                    {activeRoom.memberCount === 1 ? 'member' : 'members'}
+                    {activeRoom.memberCount === 1 ? t('community.member') : t('community.members')}
                   </span>
                 </div>
               )}
             </div>
             <div className="chat-header-actions">
               {activeRoom?.inviteCode && isJoined && (
-                <div className="room-invite-pill">Code: {activeRoom.inviteCode}</div>
+                <div className="room-invite-pill">{t('community.codeLabel')}: {activeRoom.inviteCode}</div>
               )}
               {isJoined && activeRoom && (
                 <button
@@ -451,9 +453,9 @@ const Community = () => {
                   className="btn-leave-hub"
                   onClick={() => handleLeave(activeRoom._id)}
                   disabled={busy}
-                  title={activeRoom.isGlobalDefault ? 'Leave the default hub' : 'Leave this hub'}
+                  title={activeRoom.isGlobalDefault ? t('community.leaveDefaultHint') : t('community.leaveHubHint')}
                 >
-                  <LogOut size={14} /> Leave
+                  <LogOut size={14} /> {t('community.leaveText')}
                 </button>
               )}
             </div>
@@ -463,8 +465,8 @@ const Community = () => {
             {!activeRoom ? (
               <div className="join-overlay">
                 <Users size={48} className="join-icon" />
-                <h3>Pick a hub to start chatting</h3>
-                <p>Travel hubs are open communities. Fan rooms are gated for interested members.</p>
+                <h3>{t('community.pickHubTitle')}</h3>
+                <p>{t('community.pickHubSub')}</p>
               </div>
             ) : !isJoined ? (
               <div className="join-overlay">
@@ -475,14 +477,14 @@ const Community = () => {
                 )}
                 <h3>
                   {activeRoom.isWorldCupFanRoom
-                    ? `Become a fan to enter ${activeRoom.roomName}`
-                    : `Welcome to ${activeRoom.roomName}`}
+                    ? `${t('community.becomeFanTitle')} ${activeRoom.roomName}`
+                    : `${t('community.welcomeTitle')} ${activeRoom.roomName}`}
                 </h3>
                 <p>
                   {activeRoom.description ||
                     (activeRoom.isWorldCupFanRoom
-                      ? 'A private room for travelers heading to FIFA 2030. Join once and you stay in.'
-                      : 'Join once and you stay in. We will remember it next time you visit.')}
+                      ? t('community.fanRoomDesc')
+                      : t('community.travelHubDesc'))}
                 </p>
                 <button
                   className="btn-primary"
@@ -490,9 +492,9 @@ const Community = () => {
                   disabled={busy}
                 >
                   {activeRoom.isWorldCupFanRoom ? (
-                    <><Sparkles size={16} /> Become a Fan</>
+                    <><Sparkles size={16} /> {t('community.becomeFanBtn')}</>
                   ) : (
-                    <>Join Hub</>
+                    <>{t('community.joinHubBtn')}</>
                   )}
                 </button>
               </div>
@@ -500,7 +502,7 @@ const Community = () => {
               <div className="message-list">
                 {messages.length === 0 && (
                   <div className="empty-chat-hint">
-                    No messages yet — say hi to break the ice.
+                    {t('community.emptyChatHint')}
                   </div>
                 )}
                 {messages.map((m, idx) => (
@@ -523,7 +525,7 @@ const Community = () => {
             <div className="chat-input-container">
               <input
                 type="text"
-                placeholder="Type your message..."
+                placeholder={t('community.typePlaceholder')}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && sendMessage()}

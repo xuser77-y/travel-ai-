@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useTripStore from '../../stores/tripStore';
 import { Sparkles, Plus, X } from 'lucide-react';
+import { useTranslation } from '../../hooks/useTranslation';
 import './Planner.css';
 
 const Step4Interests = () => {
   const navigate = useNavigate();
   const { formData, setFormData, setGenerating } = useTripStore();
+  const { t } = useTranslation();
 
   // Predefined interests
   const PREDEFINED_INTERESTS = [
@@ -79,14 +81,14 @@ const Step4Interests = () => {
   return (
     <div className="planner-step glass-card">
       <div className="step-header">
-        <span className="step-indicator">Step 4 of 4</span>
-        <h2>Almost there!</h2>
-        <p>Personalize your experience with your interests and dietary needs.</p>
+        <span className="step-indicator">{t('planner.step4Of4')}</span>
+        <h2>{t('planner.almostThere')}</h2>
+        <p>{t('planner.step4Sub')}</p>
       </div>
 
       <div className="planner-content">
         <div className="interest-section" style={{ marginBottom: '40px' }}>
-          <label className="step-label-lg">What do you love?</label>
+          <label className="step-label-lg">{t('planner.whatYouLove')}</label>
           <div className="pill-container">
             {PREDEFINED_INTERESTS.map((item) => (
               <div
@@ -119,7 +121,7 @@ const Step4Interests = () => {
               className={`pill pill-others ${showInterestInput ? 'active' : ''}`}
               onClick={() => setShowInterestInput((s) => !s)}
             >
-              <Plus size={14} /> Others
+              <Plus size={14} /> {t('planner.others')}
             </div>
           </div>
 
@@ -127,7 +129,7 @@ const Step4Interests = () => {
             <div className="custom-input-row">
               <input
                 type="text"
-                placeholder="Type your own interest (e.g. Photography, Live Music...)"
+                placeholder={t('planner.typeInterest')}
                 value={interestInput}
                 onChange={(e) => setInterestInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -144,14 +146,14 @@ const Step4Interests = () => {
                 onClick={addCustomInterest}
                 disabled={!interestInput.trim()}
               >
-                Add
+                {t('planner.add')}
               </button>
             </div>
           )}
         </div>
 
         <div className="dietary-section">
-          <label className="step-label-lg">Dietary Preferences</label>
+          <label className="step-label-lg">{t('planner.dietaryPrefs')}</label>
           <div className="pill-container">
             {PREDEFINED_DIETARIES.map((item) => (
               <div
@@ -182,7 +184,7 @@ const Step4Interests = () => {
               className={`pill pill-others ${showDietInput ? 'active' : ''}`}
               onClick={() => setShowDietInput((s) => !s)}
             >
-              <Plus size={14} /> Others
+              <Plus size={14} /> {t('planner.others')}
             </div>
           </div>
 
@@ -190,7 +192,7 @@ const Step4Interests = () => {
             <div className="custom-input-row">
               <input
                 type="text"
-                placeholder="Type a dietary preference (e.g. Pescatarian, No Pork...)"
+                placeholder={t('planner.typeDiet')}
                 value={dietInput}
                 onChange={(e) => setDietInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -207,7 +209,7 @@ const Step4Interests = () => {
                 onClick={addCustomDietary}
                 disabled={!dietInput.trim()}
               >
-                Add
+                {t('planner.add')}
               </button>
             </div>
           )}
@@ -215,10 +217,10 @@ const Step4Interests = () => {
       </div>
 
       <div className="step-footer">
-        <button className="btn-secondary" onClick={() => navigate('/planner/step3')}>Back</button>
+        <button className="btn-secondary" onClick={() => navigate('/planner/step3')}>{t('planner.back')}</button>
         <button className="btn-primary" onClick={handleGenerate} style={{ display: 'flex', gap: '10px' }}>
           <Sparkles size={18} />
-          Generate My Dream Trip
+          {t('planner.generate')}
         </button>
       </div>
     </div>

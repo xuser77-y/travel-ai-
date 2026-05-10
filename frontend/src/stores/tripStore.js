@@ -40,10 +40,13 @@ const writePref = (key, value) => {
 // user's last choice — no flash of the wrong theme on reload.
 const initialLanguage = readPref('travio_lang', 'en');
 const initialDarkMode = readPref('travio_theme', 'dark') !== 'light';
-// Apply theme class synchronously before React paints.
+// Apply theme and direction synchronously before React paints.
 if (typeof document !== 'undefined') {
   if (initialDarkMode) document.body.classList.remove('light-mode');
   else document.body.classList.add('light-mode');
+  
+  if (initialLanguage === 'ar') document.documentElement.dir = 'rtl';
+  else document.documentElement.dir = 'ltr';
 }
 
 const useTripStore = create((set, get) => ({
@@ -162,6 +165,9 @@ const useTripStore = create((set, get) => ({
   setGenerating: (status) => set({ isGenerating: status }),
   setLanguage: (lang) => {
     writePref('travio_lang', lang);
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    }
     set({ language: lang });
   },
   toggleDarkMode: () => set((state) => {

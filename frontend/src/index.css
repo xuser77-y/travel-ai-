@@ -192,11 +192,16 @@ input, select, textarea {
 }
 
 /* RTL helpers */
+[dir="rtl"] .input-icon,
 .rtl .input-icon { left: auto; right: 20px; }
-.rtl input[type="text"],
-.rtl input[type="email"],
-.rtl input[type="password"],
-.rtl input[type="number"],
-.rtl input[type="date"],
-.rtl select,
-.rtl textarea { padding: 18px 55px 18px 20px; }
+
+[dir="rtl"] input, [dir="rtl"] select, [dir="rtl"] textarea,
+.rtl input, .rtl select, .rtl textarea { padding-left: 20px; padding-right: 55px; }
+
+[dir="rtl"] .btn-primary svg, .rtl .btn-primary svg { transform: scaleX(-1); }
+
+/* Ensure flex layouts flip properly for explicit margin classes */
+[dir="rtl"] .ml-auto { margin-left: 0; margin-right: auto; }
+[dir="rtl"] .mr-auto { margin-right: 0; margin-left: auto; }
+[dir="rtl"] .text-left { text-align: right; }
+[dir="rtl"] .text-right { text-align: left; }

@@ -8,6 +8,7 @@ import HotelsSection from '../components/Booking/HotelsSection';
 import WeatherBadge, { WeatherChip } from '../components/UI/WeatherBadge';
 import { Calendar, MapPin, Users, Info, MessageCircle, Send, X, Sparkles, Clock, DollarSign } from 'lucide-react';
 import axios from 'axios';
+import { useTranslation } from '../hooks/useTranslation';
 import './TripResults.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -16,14 +17,23 @@ const TripResults = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentTrip, setTrip, token, refreshSubscription } = useTripStore();
+  const { t } = useTranslation();
   const [activeDay, setActiveDay] = useState(0);
   const [activeActivity, setActiveActivity] = useState(-1);
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: 'bot', text: `Hello! I'm your Travio assistant. How can I help you with your trip to ${currentTrip?.destination?.name || 'this destination'}?` }
-  ]);
+  
+  // Initialize messages lazily so they can use `t` properly after initial render
+  const [messages, setMessages] = useState([]);
+  
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        { role: 'bot', text: `${t('results.aiGreeting')} ${currentTrip?.destination?.name || 'this destination'}?` }
+      ]);
+    }
+  }, [currentTrip, t, messages.length]);
 
   // If we arrived from the Dashboard (deep link with :id) and the store
   // is empty or doesn't match, fetch the trip from the API.
@@ -107,12 +117,12 @@ const TripResults = () => {
       // upgrade.
       const status = err.response?.status;
       const data = err.response?.data;
-      let text = "I'm sorry, I couldn't process that change. Please try again.";
+      let text = t('results.aiError');
       if (status === 401) {
-        text = 'Please sign in again to use the AI chat.';
+        text = t('results.aiAuthError');
       } else if (status === 402) {
         const label = data?.featureLabel || 'AI Refinement Chat';
-        text = `⚠️ ${label} is not included in your current plan. Upgrade at /billing to keep refining trips with AI.`;
+        text = `${t('results.aiUpgradeError1')} ${label} ${t('results.aiUpgradeError2')}`;
       } else if (data?.error) {
         text = data.error;
       }
@@ -146,12 +156,12 @@ const TripResults = () => {
               <Users size={18} />
               <span style={{ textTransform: 'capitalize' }}>{trip.travelers}</span>
             </div>
-            <div className="status-badge">Confirmed</div>
+            <div className="status-badge">{t('results.confirmed')}</div>
           </div>
         </div>
 
         <div className="budget-section">
-          <h3>Budget Analysis</h3>
+          <h3>{t('results.budgetAnalysis')}</h3>
           <BudgetRing breakdown={trip.budget.breakdown} currency={trip.budget.currency} />
         </div>
 
@@ -159,11 +169,11 @@ const TripResults = () => {
           <div className="community-card glass-card">
             <div className="comm-header">
               <MessageCircle size={18} />
-              <h3>Community Hub</h3>
+              <h3>{t('results.communityHub')}</h3>
             </div>
             <p className="room-name">{trip.chatRoom.roomName}</p>
             <div className="invite-box">
-              <span className="label">Invite Code</span>
+              <span className="label">{t('results.inviteCode')}</span>
               <span className="code">{trip.chatRoom.inviteCode}</span>
             </div>
             <button
@@ -180,16 +190,16 @@ const TripResults = () => {
                 });
               }}
             >
-              Join Chat
+              {t('results.joinChat')}
             </button>
           </div>
         ) : (
           <div className="community-card glass-card">
             <div className="comm-header">
               <MessageCircle size={18} />
-              <h3>Join Community</h3>
+              <h3>{t('results.joinCommunity')}</h3>
             </div>
-            <p className="room-name">No room active for this trip yet.</p>
+            <p className="room-name">{t('results.noRoom')}</p>
             <button className="btn-community" onClick={async () => {
               // Logic to create room for old trips
               try {
@@ -203,7 +213,7 @@ const TripResults = () => {
                 navigate('/community');
               }
             }}>
-              Initialize Room
+              {t('results.initRoom')}
             </button>
           </div>
         )}
@@ -212,7 +222,7 @@ const TripResults = () => {
       {/* Floating AI Chat Button */}
       <button className={`fab-ai-chat ${showChat ? 'hidden' : ''}`} onClick={() => setShowChat(true)}>
         <Sparkles size={24} />
-        <span className="tooltip">Ask AI</span>
+        <span className="tooltip">{t('results.askAi')}</span>
       </button>
 
       {/* AI Chat Sidebar Overlay */}
@@ -221,7 +231,7 @@ const TripResults = () => {
           <div className="chat-sidebar-header">
             <div className="header-title">
               <Sparkles size={18} className="sparkle-icon" />
-              <h3>AI Trip Assistant</h3>
+              <h3>{t('results.aiAssistant')}</h3>
             </div>
             <button className="close-btn" onClick={() => setShowChat(false)}><X size={20} /></button>
           </div>
@@ -231,12 +241,12 @@ const TripResults = () => {
                 {msg.text}
               </div>
             ))}
-            {isTyping && <div className="msg bot typing">Thinking...</div>}
+            {isTyping && <div className="msg bot typing">{t('results.thinking')}</div>}
           </div>
           <div className="chat-footer">
             <input 
               type="text" 
-              placeholder="Ask for changes or suggestions..." 
+              placeholder={t('results.askSuggestions')}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -268,7 +278,7 @@ const TripResults = () => {
                   setActiveActivity(-1);
                 }}
               >
-                <span className="day-num">Day {day.dayNumber}</span>
+                <span className="day-num">{t('results.day')} {day.dayNumber}</span>
                 {day.date && (
                   <span className="day-date">
                     {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -284,7 +294,7 @@ const TripResults = () => {
           <WeatherBadge summary={trip.itinerary[activeDay]?.weatherSummary || trip.weatherDaily?.[activeDay]} />
           {trip.itinerary[activeDay]?.transportSuggestion && (
             <div className="transport-hint">
-              🚗 Suggested transport: {trip.itinerary[activeDay].transportSuggestion}
+              🚗 {t('results.suggestedTransport')} {trip.itinerary[activeDay].transportSuggestion}
             </div>
           )}
 
@@ -335,7 +345,7 @@ const TripResults = () => {
                         </span>
                       )}
                       <span className="meta-pill">
-                        <MapPin size={12} /> View on map
+                        <MapPin size={12} /> {t('results.viewOnMap')}
                       </span>
                     </div>
                   </div>
@@ -357,10 +367,10 @@ const TripResults = () => {
         <div className="map-card">
           <div className="map-card-header">
             <div>
-              <span className="map-day-label">Day {trip.itinerary[activeDay]?.dayNumber} Route</span>
+              <span className="map-day-label">{t('results.day')} {trip.itinerary[activeDay]?.dayNumber} {t('results.route')}</span>
               <h4>{trip.destination?.name?.split(',')[0]}</h4>
             </div>
-            <span className="map-stops-count">{dayActivities.length} stops</span>
+            <span className="map-stops-count">{dayActivities.length} {t('results.stops')}</span>
           </div>
           <div className="map-card-body">
             <MapView

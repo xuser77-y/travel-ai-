@@ -16,6 +16,7 @@ import socket, { identifySocket } from '../lib/socket';
 import { useToast } from '../components/UI/Toast';
 import AdminPlans from './AdminPlans';
 import { useConfirm } from '../components/UI/ConfirmDialog';
+import { useTranslation } from '../hooks/useTranslation';
 import './Admin.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -44,6 +45,7 @@ const fmtRelative = (d) => {
 
 const Admin = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
   const confirm = useConfirm();
   const { user, token } = useTripStore();
@@ -436,48 +438,95 @@ const Admin = () => {
     );
   }
 
+
+
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: Activity },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'online', label: 'Online now', icon: Wifi },
-    { id: 'trips', label: 'Trips', icon: MapPinned },
-    { id: 'rooms', label: 'Hubs', icon: MessagesSquare },
-    { id: 'liveposts', label: 'Live Posts', icon: Radio },
+    { id: 'overview', label: t('admin.sidebar.overview'), icon: BarChart3 },
+    { id: 'users', label: t('admin.sidebar.users'), icon: Users },
+    { id: 'online', label: t('admin.sidebar.online'), icon: Activity },
+    { id: 'trips', label: t('admin.sidebar.itineraries'), icon: MapPinned },
+    { id: 'rooms', label: t('admin.sidebar.chathubs'), icon: MessagesSquare },
+    { id: 'liveposts', label: t('admin.sidebar.livemap'), icon: Radio },
     { id: 'apiusage', label: 'API Usage', icon: BarChart3 },
-    { id: 'prompts', label: 'AI Prompts', icon: BookOpen },
-    { id: 'plans', label: 'Plans & Billing', icon: CreditCard },
+    { id: 'prompts', label: t('admin.sidebar.prompts'), icon: BookOpen },
+    { id: 'plans', label: t('admin.sidebar.payments'), icon: CreditCard },
     { id: 'payments', label: 'Payments', icon: TrendingUp },
-    { id: 'notifications', label: 'Notifications', icon: Bell }
+    { id: 'notifications', label: t('admin.sidebar.notifications'), icon: Bell }
   ];
 
   return (
     <div className="admin-page">
       <div className="admin-shell">
         <aside className="admin-sidebar">
-          <div className="admin-brand">
-            <Shield size={20} />
-            <div>
-              <span className="brand-title">Admin</span>
-              <span className="brand-sub">{user.email}</span>
-            </div>
+          <div className="admin-sidebar-header">
+            <Shield className="admin-logo" size={24} />
+            <h2>{t('admin.sidebar.title')}</h2>
           </div>
+
           <nav className="admin-nav">
-            {navItems.map((it) => {
-              const Icon = it.icon;
-              return (
-                <button
-                  key={it.id}
-                  type="button"
-                  className={`admin-nav-item ${section === it.id ? 'active' : ''}`}
-                  onClick={() => setSection(it.id)}
-                >
-                  <Icon size={16} /> {it.label}
-                </button>
-              );
-            })}
+            <button
+              className={`admin-nav-item ${section === 'overview' ? 'active' : ''}`}
+              onClick={() => setSection('overview')}
+            >
+              <BarChart3 size={18} /> {t('admin.sidebar.overview')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'users' ? 'active' : ''}`}
+              onClick={() => setSection('users')}
+            >
+              <Users size={18} /> {t('admin.sidebar.users')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'online' ? 'active' : ''}`}
+              onClick={() => setSection('online')}
+            >
+              <Activity size={18} /> {t('admin.sidebar.online')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'livemap' ? 'active' : ''}`}
+              onClick={() => setSection('livemap')}
+            >
+              <MapPinned size={18} /> {t('admin.sidebar.livemap')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'chathubs' ? 'active' : ''}`}
+              onClick={() => setSection('chathubs')}
+            >
+              <MessagesSquare size={18} /> {t('admin.sidebar.chathubs')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'itineraries' ? 'active' : ''}`}
+              onClick={() => setSection('itineraries')}
+            >
+              <Radio size={18} /> {t('admin.sidebar.itineraries')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'logs' ? 'active' : ''}`}
+              onClick={() => setSection('logs')}
+            >
+              <Wifi size={18} /> {t('admin.sidebar.logs')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'payments' ? 'active' : ''}`}
+              onClick={() => setSection('payments')}
+            >
+              <CreditCard size={18} /> {t('admin.sidebar.payments')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'prompts' ? 'active' : ''}`}
+              onClick={() => setSection('prompts')}
+            >
+              <BookOpen size={18} /> {t('admin.sidebar.prompts')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'notifications' ? 'active' : ''}`}
+              onClick={() => setSection('notifications')}
+            >
+              <Bell size={18} /> {t('admin.sidebar.notifications')}
+            </button>
           </nav>
           <button className="admin-back" onClick={() => navigate('/')}>
-            <ArrowLeft size={14} /> Back to site
+            <ArrowLeft size={14} /> {t('admin.sidebar.backToSite')}
           </button>
         </aside>
 
@@ -616,6 +665,7 @@ const Admin = () => {
 // =========================================================================
 
 const Overview = ({ stats, online, analytics }) => {
+  const { t } = useTranslation();
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
   // Prepare data for the growth chart by merging user and trip growth arrays.
@@ -678,11 +728,11 @@ const Overview = ({ stats, online, analytics }) => {
   return (
     <div className="admin-overview">
       <div className="stat-grid">
-        <StatCard label="Total users" value={stats.users} sub={`${stats.admins} admin · ${stats.disabled} disabled`} />
-        <StatCard label="Online now" value={online.counts.onlineUsers} sub={`${online.counts.guests} guests · ${online.counts.totalSockets} sockets`} highlight />
-        <StatCard label="30d Revenue" value={`$${totalRevenue.toFixed(2)}`} sub={`${analytics?.planPurchases?.length || 0} sales`} />
-        <StatCard label="Hubs" value={stats.rooms} sub={`${stats.totalMessages} messages`} />
-        <StatCard label="Live posts" value={stats.livePosts} />
+        <StatCard label={t('admin.overview.totalUsers')} value={stats.users} sub={`${stats.admins} admin · ${stats.disabled} disabled`} />
+        <StatCard label={t('admin.sidebar.online')} value={online.counts.onlineUsers} sub={`${online.counts.guests} guests · ${online.counts.totalSockets} sockets`} highlight />
+        <StatCard label={t('admin.overview.revenue')} value={`$${totalRevenue.toFixed(2)}`} sub={`${analytics?.planPurchases?.length || 0} sales`} />
+        <StatCard label={t('admin.sidebar.chathubs')} value={stats.rooms} sub={`${stats.totalMessages} messages`} />
+        <StatCard label={t('admin.sidebar.livemap')} value={stats.livePosts} />
       </div>
 
       <div className="analytics-grid">
@@ -805,8 +855,10 @@ const StatCard = ({ label, value, sub, highlight }) => (
   </div>
 );
 
-const UsersSection = ({ data, query, onQuery, onPage, onToggleAdmin, onToggleDisabled, onDelete, onResetPassword, currentUserId }) => (
-  <section className="admin-section">
+const UsersSection = ({ data, query, onQuery, onPage, onToggleAdmin, onToggleDisabled, onDelete, onResetPassword, currentUserId }) => {
+  const { t } = useTranslation();
+  return (
+    <section className="admin-section">
     <div className="section-toolbar">
       <div className="search-input">
         <Search size={14} />
@@ -814,7 +866,7 @@ const UsersSection = ({ data, query, onQuery, onPage, onToggleAdmin, onToggleDis
           type="text"
           value={query}
           onChange={(e) => onQuery(e.target.value)}
-          placeholder="Search by name, email, or IP…"
+          placeholder={t('admin.users.searchPlaceholder')}
         />
       </div>
       <span className="muted">{data.total} total</span>
@@ -823,13 +875,13 @@ const UsersSection = ({ data, query, onQuery, onPage, onToggleAdmin, onToggleDis
       <table className="admin-table">
         <thead>
           <tr>
-            <th>User</th>
+            <th>{t('admin.users.table.user')}</th>
             <th>Status</th>
             <th>IP</th>
             <th>Last seen</th>
             <th>Logins</th>
-            <th>Trips</th>
-            <th className="col-actions">Actions</th>
+            <th>{t('admin.sidebar.itineraries')}</th>
+            <th className="col-actions">{t('admin.users.table.actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -901,8 +953,9 @@ const UsersSection = ({ data, query, onQuery, onPage, onToggleAdmin, onToggleDis
       </table>
     </div>
     <Pagination page={data.page} total={data.total} limit={20} onPage={onPage} />
-  </section>
-);
+    </section>
+  );
+};
 
 const OnlineSection = ({ online }) => (
   <section className="admin-section">

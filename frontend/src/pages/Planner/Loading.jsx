@@ -3,22 +3,24 @@ import { useNavigate } from 'react-router-dom';
 import Globe from 'react-globe.gl';
 import axios from 'axios';
 import useTripStore from '../../stores/tripStore';
+import { useTranslation } from '../../hooks/useTranslation';
 import { Sparkles, MapPin, Calendar, Wallet, Heart, Check, AlertTriangle, RefreshCw, ArrowLeft, Lock } from 'lucide-react';
 import './Loading.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const STEPS = [
-  { id: 1, icon: MapPin, label: 'Analyzing your destination', detail: 'Mapping geography and local highlights' },
-  { id: 2, icon: Sparkles, label: 'Consulting our AI travel experts', detail: 'Gemini is curating signature experiences' },
-  { id: 3, icon: Heart, label: 'Matching to your interests', detail: 'Filtering by your preferences and pace' },
-  { id: 4, icon: Wallet, label: 'Optimizing budget allocation', detail: 'Balancing flights, stays, food, and activities' },
-  { id: 5, icon: Calendar, label: 'Building day-by-day itinerary', detail: 'Routing your perfect schedule' }
+  { id: 1, icon: MapPin, labelKey: 'planner.loadStep1', detailKey: 'planner.loadStep1Desc' },
+  { id: 2, icon: Sparkles, labelKey: 'planner.loadStep2', detailKey: 'planner.loadStep2Desc' },
+  { id: 3, icon: Heart, labelKey: 'planner.loadStep3', detailKey: 'planner.loadStep3Desc' },
+  { id: 4, icon: Wallet, labelKey: 'planner.loadStep4', detailKey: 'planner.loadStep4Desc' },
+  { id: 5, icon: Calendar, labelKey: 'planner.loadStep5', detailKey: 'planner.loadStep5Desc' }
 ];
 
 const Loading = () => {
   const navigate = useNavigate();
   const { formData, setTrip, setGenerating, token } = useTripStore();
+  const { t } = useTranslation();
   const [activeStep, setActiveStep] = useState(0);
   const [error, setError] = useState(null);
   const [upgradeInfo, setUpgradeInfo] = useState(null);
@@ -102,19 +104,19 @@ const Loading = () => {
           <div className="err-icon" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.2), rgba(234,179,8,0.15))' }}>
             <Lock size={28} />
           </div>
-          <h2>You've used your free trial</h2>
+          <h2>{t('planner.trialUsedTitle')}</h2>
           <p>
             {limit > 0
-              ? `You've used ${used} of ${limit} free trip generations.`
-              : 'This feature requires a paid plan.'}
-            &nbsp;Upgrade to keep planning unlimited trips.
+              ? `${t('planner.trialUsedDesc1')} ${used} ${t('planner.trialUsedDesc2')} ${limit} ${t('planner.trialUsedDesc3')}`
+              : t('planner.reqPaidPlan')}
+            &nbsp;{t('planner.upgradeToKeep')}
           </p>
           <div className="err-actions">
             <button className="btn-secondary" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft size={16} /> My Trips
+              <ArrowLeft size={16} /> {t('planner.myTrips')}
             </button>
             <button className="btn-primary" onClick={() => navigate('/billing')}>
-              <Sparkles size={16} /> See plans
+              <Sparkles size={16} /> {t('planner.seePlans')}
             </button>
           </div>
         </div>
@@ -127,14 +129,14 @@ const Loading = () => {
       <div className="loading-screen">
         <div className="loading-error">
           <div className="err-icon"><AlertTriangle size={28} /></div>
-          <h2>We hit a snag</h2>
+          <h2>{t('planner.hitSnag')}</h2>
           <p>{error}</p>
           <div className="err-actions">
             <button className="btn-secondary" onClick={() => navigate('/planner/step4')}>
-              <ArrowLeft size={16} /> Go Back
+              <ArrowLeft size={16} /> {t('planner.goBack')}
             </button>
             <button className="btn-primary" onClick={() => window.location.reload()}>
-              <RefreshCw size={16} /> Try Again
+              <RefreshCw size={16} /> {t('planner.tryAgain')}
             </button>
           </div>
         </div>
@@ -179,15 +181,15 @@ const Loading = () => {
         <div className="loading-content">
           <div className="loading-eyebrow">
             <Sparkles size={14} />
-            <span>AI WORKING</span>
+            <span>{t('planner.aiWorking')}</span>
           </div>
 
           <h1 className="loading-title">
-            Crafting your trip to <span className="grad-text">{destName}</span>
+            {t('planner.craftingTrip')} <span className="grad-text">{destName}</span>
           </h1>
 
           <p className="loading-sub">
-            Our travel intelligence is composing your personalized itinerary. Hold tight — magic happens fast.
+            {t('planner.loadingSub')}
           </p>
 
           {/* Progress bar */}
@@ -197,7 +199,7 @@ const Loading = () => {
             </div>
             <div className="loading-progress-label">
               <span>{Math.round(progressPct)}%</span>
-              <span>Step {activeStep + 1} of {STEPS.length}</span>
+              <span>{t('planner.stepProgress')} {activeStep + 1} / {STEPS.length}</span>
             </div>
           </div>
 
@@ -212,8 +214,8 @@ const Loading = () => {
                     {status === 'done' ? <Check size={14} /> : <Icon size={14} />}
                   </div>
                   <div className="step-text">
-                    <strong>{step.label}</strong>
-                    <small>{step.detail}</small>
+                    <strong>{t(step.labelKey)}</strong>
+                    <small>{t(step.detailKey)}</small>
                   </div>
                   {status === 'active' && <div className="step-loader" />}
                 </li>

@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Settings as SettingsIcon, Shield, CreditCard, Sparkles
 } from 'lucide-react';
 import useTripStore from '../../stores/tripStore';
+import { useTranslation } from '../../hooks/useTranslation';
 import NotificationDropdown from './NotificationDropdown';
 import './Navbar.css';
 
@@ -12,6 +13,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode, toggleDarkMode, language, setLanguage, user, logout } = useTripStore();
+  const { t } = useTranslation();
   // Note: nav links are intentionally always visible (freemium UX).
   // Restriction happens INSIDE each premium page via <FreemiumGate>:
   // free users still see the page but it's blurred + an upgrade modal
@@ -57,12 +59,7 @@ const Navbar = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const translations = {
-    en: { home: 'Home', explore: 'Explore', worldcup: 'World Cup', community: 'Community', livemap: 'Live Map', login: 'Login', dashboard: 'My Dashboard', settings: 'Settings', logout: 'Logout', welcome: 'Welcome' },
-    fr: { home: 'Accueil', explore: 'Explorer', worldcup: 'Coupe du Monde', community: 'Communauté', livemap: 'Carte Live', login: 'Connexion', dashboard: 'Mon tableau de bord', settings: 'Paramètres', logout: 'Déconnexion', welcome: 'Bienvenue' },
-    ar: { home: 'الرئيسية', explore: 'استكشف', worldcup: 'كأس العالم', community: 'المجتمع', livemap: 'الخريطة الحية', login: 'دخول', dashboard: 'لوحة التحكم', settings: 'الإعدادات', logout: 'تسجيل الخروج', welcome: 'مرحباً' }
-  };
-  const t = translations[language] || translations.en;
+
 
   const handleLangSelect = (code) => {
     setLanguage(code);
@@ -83,11 +80,11 @@ const Navbar = () => {
         </Link>
 
         <div ref={menuRef} className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
-          <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>{t.home}</NavLink>
-          <NavLink to="/planner" className={({ isActive }) => isActive ? 'active' : ''}>{t.explore}</NavLink>
-          <NavLink to="/worldcup" className={({ isActive }) => isActive ? 'active' : ''}>{t.worldcup}</NavLink>
-          <NavLink to="/livemap" className={({ isActive }) => isActive ? 'active' : ''}>{t.livemap}</NavLink>
-          <NavLink to="/community" className={({ isActive }) => isActive ? 'active' : ''}>{t.community}</NavLink>
+          <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>{t('nav.home')}</NavLink>
+          <NavLink to="/planner" className={({ isActive }) => isActive ? 'active' : ''}>{t('nav.explore')}</NavLink>
+          <NavLink to="/worldcup" className={({ isActive }) => isActive ? 'active' : ''}>{t('nav.worldcup')}</NavLink>
+          <NavLink to="/livemap" className={({ isActive }) => isActive ? 'active' : ''}>{t('nav.livemap')}</NavLink>
+          <NavLink to="/community" className={({ isActive }) => isActive ? 'active' : ''}>{t('nav.community')}</NavLink>
         </div>
 
         <div className="nav-actions">
@@ -155,13 +152,13 @@ const Navbar = () => {
               {isUserOpen && (
                 <div className="profile-dropdown" role="menu">
                   <div className="dropdown-header">
-                    <span className="welcome-text">{t.welcome},</span>
+                    <span className="welcome-text">{t('nav.welcome')},</span>
                     <h4>{user.name}</h4>
                   </div>
                   <div className="dropdown-links">
-                    <Link to="/dashboard"><LayoutDashboard size={16} /> {t.dashboard}</Link>
+                    <Link to="/dashboard"><LayoutDashboard size={16} /> {t('nav.dashboard')}</Link>
                     <Link to="/billing"><CreditCard size={16} /> Billing &amp; Plan</Link>
-                    <Link to="/settings"><SettingsIcon size={16} /> {t.settings}</Link>
+                    <Link to="/settings"><SettingsIcon size={16} /> {t('nav.settings')}</Link>
                     {user.isAdmin && (
                       <Link to="/admin" className="admin-link">
                         <Shield size={16} /> Admin
@@ -169,7 +166,7 @@ const Navbar = () => {
                     )}
                     <hr />
                     <button className="logout-link" onClick={handleLogout}>
-                      <LogOut size={16} /> {t.logout}
+                      <LogOut size={16} /> {t('nav.logout')}
                     </button>
                   </div>
                 </div>
@@ -178,7 +175,7 @@ const Navbar = () => {
           ) : (
             <Link to="/login" className="btn-login">
               <User size={16} />
-              <span>{t.login}</span>
+              <span>{t('nav.login')}</span>
             </Link>
           )}
 

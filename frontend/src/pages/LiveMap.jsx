@@ -9,6 +9,7 @@ import {
   Bus, CloudSun, Shield, ThumbsUp, Filter, Crosshair, RefreshCw, X, Navigation, Trash2, Clock
 } from 'lucide-react';
 import useTripStore from '../stores/tripStore';
+import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import './LiveMap.css';
@@ -106,6 +107,7 @@ const guestAuthorId = (() => {
 
 const LiveMap = () => {
   const { user, language, token, refreshSubscription } = useTripStore();
+  const { t } = useTranslation();
   // Used on every gated POST/DELETE — the livemap routes are now
   // requireAuth + requireFeature('livemap'), so missing this header is
   // why the FE was getting blanket 401s after the gating refactor.
@@ -129,39 +131,6 @@ const LiveMap = () => {
   // Timestamp of the last "Remove picked location" action; used to
   // suppress map.click that immediately follows the popup unmount.
   const removeCooldownRef = useRef(0);
-
-  const t = {
-    en: { title: 'Live Travel Pulse', subtitle: 'Real-time intelligence from travelers around you.',
-      report: 'Report something', message: 'What is happening?', share: 'Share', filter: 'Filter',
-      all: 'All reports', recenter: 'My location', refresh: 'Refresh',
-      summary: 'AI area summary', noActivity: 'Tap on the map or a marker to analyze the area.',
-      action_visit: 'Good time to visit', action_avoid: 'Avoid this area',
-      action_alternative: 'Take an alternative route', action_monitor: 'Monitor for updates',
-      live: 'LIVE', clusters: 'Active zones', pickedHint: 'Selected location',
-      clearPick: 'Clear selected location', useMyLocation: 'Use my location',
-      remove: 'Remove', myPosts: 'My recent posts', noMyPosts: 'You haven\u2019t shared anything yet.',
-      confirmDelete: 'Delete this post?' },
-    fr: { title: 'Pouls Voyage en Direct', subtitle: 'Intelligence en temps réel des voyageurs autour de vous.',
-      report: 'Signaler', message: 'Que se passe-t-il ?', share: 'Partager', filter: 'Filtrer',
-      all: 'Tous', recenter: 'Ma position', refresh: 'Actualiser',
-      summary: 'Résumé IA de la zone', noActivity: 'Cliquez sur la carte ou un marqueur pour analyser.',
-      action_visit: 'Bon moment pour visiter', action_avoid: 'Évitez cette zone',
-      action_alternative: 'Prenez un autre itinéraire', action_monitor: 'Surveillez',
-      live: 'EN DIRECT', clusters: 'Zones actives', pickedHint: 'Lieu sélectionné',
-      clearPick: 'Effacer le lieu sélectionné', useMyLocation: 'Utiliser ma position',
-      remove: 'Retirer', myPosts: 'Mes derniers posts', noMyPosts: 'Vous n\u2019avez encore rien partagé.',
-      confirmDelete: 'Supprimer ce post\u00a0?' },
-    ar: { title: 'نبض السفر الحي', subtitle: 'معلومات فورية من المسافرين من حولك.',
-      report: 'الإبلاغ', message: 'ماذا يحدث؟', share: 'مشاركة', filter: 'تصفية',
-      all: 'الكل', recenter: 'موقعي', refresh: 'تحديث',
-      summary: 'ملخص الذكاء الاصطناعي', noActivity: 'انقر على الخريطة أو علامة للتحليل.',
-      action_visit: 'وقت جيد للزيارة', action_avoid: 'تجنب هذه المنطقة',
-      action_alternative: 'اسلك طريقاً بديلاً', action_monitor: 'راقب التحديثات',
-      clearPick: 'مسح الموقع المحدد', useMyLocation: 'استخدم موقعي',
-      remove: 'إزالة', myPosts: 'منشوراتي الأخيرة', noMyPosts: 'لم تشارك شيئًا بعد.',
-      confirmDelete: 'حذف هذا المنشور؟',
-      live: 'مباشر', clusters: 'المناطق النشطة', pickedHint: 'الموقع المحدد' }
-  }[language] || {};
 
   // Initial fetch + socket
   const fetchAll = async () => {
@@ -267,12 +236,12 @@ const LiveMap = () => {
       const status = err.response?.status;
       const data = err.response?.data;
       if (status === 401) {
-        toast.error('Please sign in to post on the live map.');
+        toast.error(t('liveMap.authRequired'));
       } else if (status === 402) {
-        toast.error(`${data?.featureLabel || 'Live Map posts'} requires a paid plan. Opening Billing…`);
+        toast.error(`${data?.featureLabel || t('liveMap.planGatedMsg2')} ${t('liveMap.planGatedMsg1')}`);
         setTimeout(() => { window.location.href = '/billing'; }, 900);
       } else {
-        toast.error(data?.error || 'Could not publish your post.');
+        toast.error(data?.error || t('liveMap.postError'));
       }
     } finally {
       setPosting(false);
@@ -282,10 +251,10 @@ const LiveMap = () => {
   const deletePost = async (id) => {
     if (!id || deletingId) return;
     const ok = await confirm({
-      title: t.confirmDelete || 'Delete this post?',
-      message: 'It will disappear from the live feed for everyone.',
-      confirmLabel: t.remove || 'Delete',
-      cancelLabel: 'Cancel',
+      title: t('liveMap.confirmDeleteTitle'),
+      message: t('liveMap.confirmDeleteMsg'),
+      confirmLabel: t('liveMap.deleteBtn'),
+      cancelLabel: t('liveMap.cancelBtn'),
       variant: 'danger'
     });
     if (!ok) return;
@@ -299,7 +268,7 @@ const LiveMap = () => {
       });
     } catch (err) {
       console.error('Delete failed:', err);
-      toast.error(err.response?.data?.error || 'Could not delete post.');
+      toast.error(err.response?.data?.error || t('liveMap.delError'));
       setPosts(snapshot); // Revert on failure
     } finally {
       setDeletingId(null);
@@ -313,7 +282,7 @@ const LiveMap = () => {
       const res = await axios.post(`${API}/summary`, { location: { lat, lon }, radiusKm });
       setAiSummary(res.data);
     } catch (err) {
-      setAiSummary({ summary: 'Unable to analyze area right now.', action: 'monitor' });
+      setAiSummary({ summary: t('liveMap.aiError'), action: 'monitor' });
     } finally {
       setAiLoading(false);
     }
@@ -340,22 +309,22 @@ const LiveMap = () => {
     <div className={`livemap-page ${language === 'ar' ? 'rtl' : ''}`}>
       <header className="lm-header">
         <div className="lm-title-row">
-          <span className="live-pill"><span className="live-dot" /> {t.live}</span>
-          <h1>{t.title}</h1>
+          <span className="live-pill"><span className="live-dot" /> {t('liveMap.live')}</span>
+          <h1>{t('liveMap.title')}</h1>
         </div>
-        <p className="lm-sub">{t.subtitle}</p>
+        <p className="lm-sub">{t('liveMap.subtitle')}</p>
       </header>
 
       <div className="lm-layout">
         {/* Sidebar */}
         <aside className="lm-sidebar">
           <div className="lm-card">
-            <div className="card-head"><Filter size={16} /> <span>{t.filter}</span></div>
+            <div className="card-head"><Filter size={16} /> <span>{t('liveMap.filter')}</span></div>
             <div className="filter-pills">
               <button
                 className={`fpill ${filterType === 'all' ? 'active' : ''}`}
                 onClick={() => setFilterType('all')}
-              >{t.all} <span className="count">{posts.length}</span></button>
+              >{t('liveMap.all')} <span className="count">{posts.length}</span></button>
               {TYPES.map((tp) => {
                 const Icon = tp.icon;
                 const count = posts.filter((p) => p.type === tp.id).length;
@@ -374,7 +343,7 @@ const LiveMap = () => {
           </div>
 
           <div className="lm-card">
-            <div className="card-head"><MapPin size={16} /> <span>{t.report}</span></div>
+            <div className="card-head"><MapPin size={16} /> <span>{t('liveMap.report')}</span></div>
             <form className="report-form" onSubmit={submitPost}>
               <div className="type-grid">
                 {TYPES.map((tp) => {
@@ -395,7 +364,7 @@ const LiveMap = () => {
                 })}
               </div>
               <textarea
-                placeholder={t.message}
+                placeholder={t('liveMap.message')}
                 value={draftMsg}
                 onChange={(e) => setDraftMsg(e.target.value.slice(0, 280))}
                 maxLength={280}
@@ -405,20 +374,20 @@ const LiveMap = () => {
                 {pickedPos ? (
                   <span className="hint pick-chip">
                     <MapPin size={12} />
-                    {t.pickedHint}: {pickedPos.lat.toFixed(3)}, {pickedPos.lon.toFixed(3)}
+                    {t('liveMap.pickedHint')}: {pickedPos.lat.toFixed(3)}, {pickedPos.lon.toFixed(3)}
                     <button
                       type="button"
                       className="pick-clear"
                       onClick={useMyLocation}
-                      aria-label={t.clearPick}
-                      title={t.useMyLocation}
+                      aria-label={t('liveMap.clearPick')}
+                      title={t('liveMap.useMyLocation')}
                     >
                       <X size={12} />
                     </button>
                   </span>
                 ) : (
                   <span className="hint">
-                    {userPos ? `📍 ${t.useMyLocation}` : 'Tap map to pick a location'}
+                    {userPos ? `📍 ${t('liveMap.useMyLocation')}` : t('liveMap.tapMapHint')}
                   </span>
                 )}
                 <button
@@ -426,41 +395,41 @@ const LiveMap = () => {
                   className="btn-share"
                   disabled={!draftMsg.trim() || posting}
                 >
-                  <Send size={14} /> {posting ? '…' : t.share}
+                  <Send size={14} /> {posting ? '…' : t('liveMap.share')}
                 </button>
               </div>
             </form>
           </div>
 
           <div className="lm-card">
-            <div className="card-head"><Sparkles size={16} /> <span>{t.summary}</span></div>
+            <div className="card-head"><Sparkles size={16} /> <span>{t('liveMap.summary')}</span></div>
             {aiLoading ? (
               <div className="ai-loading">
                 <div className="spinner-sm" />
-                <span>Analyzing area…</span>
+                <span>{t('liveMap.analyzing')}</span>
               </div>
             ) : aiSummary ? (
               <div className={`ai-result action-${aiSummary.action}`}>
                 <p className="ai-text">{aiSummary.summary}</p>
                 <span className="ai-action">
-                  {aiSummary.action === 'visit' && `✅ ${t.action_visit}`}
-                  {aiSummary.action === 'avoid' && `⛔ ${t.action_avoid}`}
-                  {aiSummary.action === 'alternative' && `↪️ ${t.action_alternative}`}
-                  {aiSummary.action === 'monitor' && `👀 ${t.action_monitor}`}
+                  {aiSummary.action === 'visit' && `✅ ${t('liveMap.action_visit')}`}
+                  {aiSummary.action === 'avoid' && `⛔ ${t('liveMap.action_avoid')}`}
+                  {aiSummary.action === 'alternative' && `↪️ ${t('liveMap.action_alternative')}`}
+                  {aiSummary.action === 'monitor' && `👀 ${t('liveMap.action_monitor')}`}
                 </span>
               </div>
             ) : (
-              <p className="muted-hint">{t.noActivity}</p>
+              <p className="muted-hint">{t('liveMap.noActivity')}</p>
             )}
           </div>
 
           <div className="lm-card my-posts-card">
             <div className="card-head">
-              <Users size={16} /> <span>{t.myPosts}</span>
+              <Users size={16} /> <span>{t('liveMap.myPosts')}</span>
               {myPosts.length > 0 && <span className="card-count">{myPosts.length}</span>}
             </div>
             {myPosts.length === 0 ? (
-              <p className="muted-hint">{t.noMyPosts}</p>
+              <p className="muted-hint">{t('liveMap.noMyPosts')}</p>
             ) : (
               <ul className="my-posts-list">
                 {myPosts.map((p) => {
@@ -491,8 +460,8 @@ const LiveMap = () => {
                         className="mp-delete"
                         onClick={() => deletePost(p._id)}
                         disabled={deletingId === p._id}
-                        aria-label={t.remove}
-                        title={t.remove}
+                        aria-label={t('liveMap.remove')}
+                        title={t('liveMap.remove')}
                       >
                         <Trash2 size={13} />
                       </button>
@@ -504,9 +473,9 @@ const LiveMap = () => {
           </div>
 
           <div className="lm-card">
-            <div className="card-head"><Crosshair size={16} /> <span>{t.clusters}</span></div>
+            <div className="card-head"><Crosshair size={16} /> <span>{t('liveMap.clusters')}</span></div>
             {clusters.length === 0 ? (
-              <p className="muted-hint">No active zones yet.</p>
+              <p className="muted-hint">{t('liveMap.noZones')}</p>
             ) : (
               <ul className="cluster-list">
                 {clusters.slice(0, 6).map((c) => (
@@ -517,7 +486,7 @@ const LiveMap = () => {
                   >
                     <span className="cdot" />
                     <div>
-                      <strong>{c.size} reports</strong>
+                      <strong>{c.size} {t('liveMap.reports')}</strong>
                       <small>{c.types.join(' · ')}</small>
                     </div>
                   </li>
@@ -527,7 +496,7 @@ const LiveMap = () => {
             <button
               className="btn-ghost full"
               onClick={fetchAll}
-            ><RefreshCw size={14} /> {t.refresh}</button>
+            ><RefreshCw size={14} /> {t('liveMap.refresh')}</button>
           </div>
         </aside>
 
@@ -551,7 +520,7 @@ const LiveMap = () => {
                 position={userPos}
                 icon={makeIcon('#3b82f6', 1, true)}
               >
-                <Popup>You are here</Popup>
+                <Popup>{t('liveMap.youAreHere')}</Popup>
               </Marker>
             )}
 
@@ -562,7 +531,7 @@ const LiveMap = () => {
               >
                 <Popup>
                   <div className="lm-popup pick-popup" ref={stopMapEvents}>
-                    <strong>{t.pickedHint}</strong>
+                    <strong>{t('liveMap.pickedHint')}</strong>
                     <small>{pickedPos.lat.toFixed(4)}, {pickedPos.lon.toFixed(4)}</small>
                     <button
                       type="button"
@@ -573,7 +542,7 @@ const LiveMap = () => {
                         useMyLocation();
                       }}
                     >
-                      <Trash2 size={12} /> {t.remove}
+                      <Trash2 size={12} /> {t('liveMap.remove')}
                     </button>
                   </div>
                 </Popup>
@@ -631,9 +600,9 @@ const LiveMap = () => {
           </MapContainer>
 
           <div className="map-overlay-stats">
-            <div><strong>{posts.length}</strong><span>posts</span></div>
-            <div><strong>{clusters.length}</strong><span>zones</span></div>
-            <div><strong>{posts.filter((p) => ageHours(p.createdAt) < 1).length}</strong><span>last hr</span></div>
+            <div><strong>{posts.length}</strong><span>{t('liveMap.postsStat')}</span></div>
+            <div><strong>{clusters.length}</strong><span>{t('liveMap.zonesStat')}</span></div>
+            <div><strong>{posts.filter((p) => ageHours(p.createdAt) < 1).length}</strong><span>{t('liveMap.lastHrStat')}</span></div>
           </div>
         </div>
       </div>
