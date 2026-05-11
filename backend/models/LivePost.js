@@ -24,8 +24,8 @@ const LivePostSchema = new mongoose.Schema({
     index: true
   },
   upvotes: { type: Number, default: 0 },
-  // TTL: posts auto-expire after 6 hours
-  expiresAt: { type: Date, default: () => new Date(Date.now() + 6 * 60 * 60 * 1000), index: { expires: 0 } }
+  // TTL: posts auto-expire after 24 hours
+  expiresAt: { type: Date, default: () => new Date(Date.now() + 24 * 60 * 60 * 1000), index: { expires: 0 } }
 }, { timestamps: true });
 
 LivePostSchema.index({ 'location.lat': 1, 'location.lon': 1 });

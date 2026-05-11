@@ -154,8 +154,14 @@ router.post('/summary', async (req, res) => {
   }
 });
 
-// POST /api/livemap/seed  -- dev helper to populate demo posts
-router.post('/seed', async (req, res) => {
+// POST /api/livemap/seed  -- dev helper to populate demo posts.
+// Admin-only: this wipes the entire LivePost collection before reinserting,
+// so leaving it open let any visitor (or the auto-seed in LiveMap.jsx) erase
+// real user-created posts.
+router.post('/seed', requireAuth, async (req, res) => {
+  if (!req.user?.isAdmin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
   try {
     const samples = [
       { type: 'crowd', message: 'Hassan II Mosque entrance is packed, 40-min queue right now.', location: { lat: 33.6086, lon: -7.6326, name: 'Hassan II Mosque' } },

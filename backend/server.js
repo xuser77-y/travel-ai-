@@ -101,7 +101,7 @@ const initializeGlobalHubs = async () => {
             endDate: new Date('2031-01-01')
           }
         },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       );
     }
     console.log('Global hubs initialized / synced.');

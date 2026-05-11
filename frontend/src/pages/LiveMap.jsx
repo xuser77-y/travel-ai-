@@ -32,7 +32,7 @@ const sentimentColor = (s) =>
   s === 'positive' ? '#10b981' : s === 'negative' ? '#ef4444' : '#eab308';
 
 const ageHours = (createdAt) => (Date.now() - new Date(createdAt).getTime()) / 3.6e6;
-const fadeOpacity = (createdAt) => Math.max(0.35, 1 - ageHours(createdAt) / 6);
+const fadeOpacity = (createdAt) => Math.max(0.35, 1 - ageHours(createdAt) / 24);
 
 // Build a colored, divIcon marker
 const makeIcon = (color, opacity = 1, pulse = false) =>
@@ -132,7 +132,10 @@ const LiveMap = () => {
   // suppress map.click that immediately follows the popup unmount.
   const removeCooldownRef = useRef(0);
 
-  // Initial fetch + socket
+  // Initial fetch + socket. We deliberately do NOT auto-seed when the
+  // collection is empty — `/seed` wipes every existing post before
+  // reinserting demo data and is now admin-gated. The map just renders
+  // the empty state until real posts come in (or an admin seeds via tools).
   const fetchAll = async () => {
     try {
       const [pRes, cRes] = await Promise.all([
@@ -141,12 +144,6 @@ const LiveMap = () => {
       ]);
       setPosts(pRes.data.posts || []);
       setClusters(cRes.data.clusters || []);
-      // Auto-seed if empty
-      if ((pRes.data.posts || []).length === 0) {
-        await axios.post(`${API}/seed`).catch(() => {});
-        const after = await axios.get(`${API}/posts`);
-        setPosts(after.data.posts || []);
-      }
     } catch (err) {
       console.error('LiveMap fetch error:', err);
     }

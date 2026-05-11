@@ -120,8 +120,19 @@ router.post('/refine', requireAuth, requireFeature('refine'), async (req, res) =
     // We also strip `_id` from the patch BEFORE the update — Mongo
     // refuses to mutate immutable fields like `_id`, and Mongoose throws
     // when it sees one in the body of findByIdAndUpdate.
+    //
+    // IMPORTANT: we only persist when the LLM actually produced an
+    // updated trip. Saving an empty patch would $set:{} and the FE would
+    // receive the unchanged doc alongside a cheerful "I replaced X!"
+    // aiResponse — the exact "AI says OK but trip doesn't change" bug.
     let savedTrip = null;
-    if (currentTrip?._id) {
+    const hasUsableUpdate =
+      result.updatedTrip &&
+      typeof result.updatedTrip === 'object' &&
+      Array.isArray(result.updatedTrip.itinerary) &&
+      result.updatedTrip.itinerary.length > 0;
+
+    if (hasUsableUpdate && currentTrip?._id) {
       const patch = { ...result.updatedTrip };
       delete patch._id;
       delete patch.userId;
@@ -129,13 +140,14 @@ router.post('/refine', requireAuth, requireFeature('refine'), async (req, res) =
       delete patch.updatedAt;
       delete patch.__v;
 
-      // `new: true` returns the post-update doc; `populate('chatRoom')`
-      // matches what GET /trips/:id returns so the FE re-render is
-      // identical to a hard refresh — but instant.
+      // `returnDocument: 'after'` returns the post-update doc; the
+      // follow-up populate('chatRoom') matches what GET /trips/:id
+      // returns so the FE re-render is identical to a hard refresh —
+      // but instant.
       savedTrip = await Trip.findByIdAndUpdate(
         currentTrip._id,
         { $set: patch },
-        { new: true }
+        { returnDocument: 'after' }
       );
       if (savedTrip) {
         savedTrip = await Trip.findById(savedTrip._id).populate('chatRoom');
@@ -144,16 +156,18 @@ router.post('/refine', requireAuth, requireFeature('refine'), async (req, res) =
 
     // Freemium: free users burn one of their 3 uses per successful refine.
     // Done AFTER the AI call so a model failure doesn't eat their quota.
+    // We still charge a use even if the model only chatted back — the
+    // compute happened and the user got a reply.
     if (planService.effectivePlan(req.user) === 'free' && !req.user.isAdmin) {
       await User.findByIdAndUpdate(req.user._id, { $inc: { freeTripsUsed: 1 } });
     }
 
-    // Always hand the FE a *complete* trip object. Falling back to the
-    // LLM's payload only when there is no _id (very old trips that
-    // pre-date persistence).
+    // Only return an updatedTrip when there was a real edit. Returning
+    // the old doc would make the FE think the edit succeeded and silently
+    // overwrite any local optimistic state with unchanged data.
     res.json({
       aiResponse: result.aiResponse,
-      updatedTrip: savedTrip || result.updatedTrip
+      updatedTrip: hasUsableUpdate ? (savedTrip || result.updatedTrip) : null
     });
   } catch (error) {
     console.error('Refine error:', error.message);

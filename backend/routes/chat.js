@@ -43,10 +43,22 @@ router.get('/rooms', async (req, res) => {
 });
 
 // GET /api/chat/history/:roomId
-router.get('/history/:roomId', async (req, res) => {
+// Auth-gated: only members of the hub (or admins) can read its history.
+// Previously this was wide-open and anyone with a roomId could scrape every
+// message in any hub, including private/World-Cup rooms.
+router.get('/history/:roomId', authMiddleware, async (req, res) => {
   try {
     const room = await ChatRoom.findById(req.params.roomId);
     if (!room) return res.status(404).json({ error: 'Room not found' });
+
+    const requester = await User.findById(req.user.id).select('isAdmin');
+    const isMember = (room.participants || []).some(
+      (id) => id.toString() === req.user.id.toString()
+    );
+    if (!requester?.isAdmin && !isMember) {
+      return res.status(403).json({ error: 'Join this hub to read its messages.' });
+    }
+
     res.json(room.messages);
   } catch (error) {
     res.status(500).json({ error: error.message });

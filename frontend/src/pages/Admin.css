@@ -60,6 +60,33 @@
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  /* Allow the list to scroll independently when there are more nav items
+     than fit in the viewport. min-height:0 is required so the flex child
+     can actually shrink below its content size and let overflow engage. */
+  min-height: 0;
+  overflow-y: auto;
+  /* Subtle, theme-aware scrollbar so the sidebar doesn't get a default
+     chunky one that clashes with the dark UI. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  padding-right: 4px;
+}
+
+.admin-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.admin-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-nav::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.admin-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .admin-nav-item {

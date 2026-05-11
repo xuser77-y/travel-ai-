@@ -296,7 +296,7 @@ const setPrompt = async (key, { systemPrompt, userTemplate }, editor) => {
       ? { userId: editor.userId || editor._id || editor.id, email: editor.email }
       : undefined
   };
-  return AiPrompt.findOneAndUpdate({ key }, update, { upsert: true, new: true });
+  return AiPrompt.findOneAndUpdate({ key }, update, { upsert: true, returnDocument: 'after' });
 };
 
 const resetPrompt = async (key) => {

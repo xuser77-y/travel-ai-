@@ -99,7 +99,9 @@ const Community = () => {
     socket.emit('join_room', selectedRoomId);
     (async () => {
       try {
-        const res = await axios.get(`${API}/api/chat/history/${selectedRoomId}`);
+        const res = await axios.get(`${API}/api/chat/history/${selectedRoomId}`, {
+          headers: authHeaders
+        });
         if (cancelled) return;
         setMessages(
           res.data.map((m) => ({

@@ -245,7 +245,7 @@ router.patch('/users/:id', async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { $set: allowed },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     ).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
@@ -446,7 +446,7 @@ router.patch('/rooms/:id', async (req, res) => {
     const room = await ChatRoom.findByIdAndUpdate(
       req.params.id,
       { $set: allowed },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
     if (!room) return res.status(404).json({ error: 'Room not found' });
     res.json(room);
@@ -873,7 +873,7 @@ router.post('/users/:id/grant-trials', async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { $inc: { trialLimit: count } },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ ok: true, trialLimit: user.trialLimit, freeTripsUsed: user.freeTripsUsed });
@@ -891,7 +891,7 @@ router.post('/users/:id/expire-plan', async (req, res) => {
     const user = await User.findByIdAndUpdate(
       req.params.id,
       { $set: { plan: 'free', planExpiresAt: null } },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-password');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ ok: true });

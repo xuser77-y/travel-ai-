@@ -105,6 +105,20 @@ const TripResults = () => {
       setMessages(prev => [...prev, { role: 'bot', text: aiResponse }]);
       if (updatedTrip) {
         setTrip(updatedTrip); // Update the global state and UI
+      } else {
+        // The AI chatted back but didn't produce a usable edit. Without
+        // this nudge the user would see the AI say "done!" and wonder
+        // why nothing on the itinerary changed.
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'bot',
+            text:
+              "⚠️ I didn't manage to update the itinerary this time. " +
+              "Try rephrasing with the exact day and time slot, e.g. " +
+              "\"Replace the Afternoon session on day 2 with a beach walk.\""
+          }
+        ]);
       }
       // Refresh the freemium counter so the FreemiumGate flips to "locked"
       // immediately if this was the user's 3rd free use, instead of

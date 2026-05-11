@@ -1,14 +1,53 @@
 const axios = require('axios');
 const http = require('http');
 const https = require('https');
+const dns = require('dns');
 require('dotenv').config();
 
 // Force IPv4-only DNS lookups. On many Windows boxes (and some Moroccan
 // ISPs) IPv6 resolution for `api.pexels.com` returns NXDOMAIN even when
 // IPv4 works fine — that was the recurring `ENOTFOUND` we kept seeing.
 // `family: 4` makes Node skip the AAAA lookup and go straight to A.
-const ipv4HttpAgent = new http.Agent({ family: 4, keepAlive: true });
-const ipv4HttpsAgent = new https.Agent({ family: 4, keepAlive: true });
+
+// Public DNS resolver used as a fallback when the system resolver fails.
+// ISPs occasionally block / fail to resolve `api.pexels.com` even though
+// the host is globally reachable; Cloudflare + Google act as a lifeline.
+const publicResolver = new dns.promises.Resolver();
+publicResolver.setServers(['1.1.1.1', '1.0.0.1', '8.8.8.8']);
+
+// Custom lookup: try the OS resolver first (respects /etc/hosts, VPN DNS,
+// corporate splits), and only fall back to Cloudflare on ENOTFOUND /
+// EAI_AGAIN. This keeps local network hacks working while fixing the
+// "ISP DNS is broken" failure mode.
+const resilientLookup = (hostname, options, callback) => {
+  // `options` can be either a number (legacy family arg) or an object.
+  const family = typeof options === 'number' ? options : options?.family || 0;
+  dns.lookup(hostname, { family: family || 4 }, (err, address, fam) => {
+    if (!err) return callback(null, address, fam);
+    const code = err.code;
+    if (code !== 'ENOTFOUND' && code !== 'EAI_AGAIN') {
+      return callback(err);
+    }
+    // System resolver failed — try Cloudflare directly.
+    publicResolver.resolve4(hostname)
+      .then((addrs) => {
+        if (!addrs || addrs.length === 0) return callback(err);
+        callback(null, addrs[0], 4);
+      })
+      .catch(() => callback(err));
+  });
+};
+
+const ipv4HttpAgent = new http.Agent({
+  family: 4,
+  keepAlive: true,
+  lookup: resilientLookup
+});
+const ipv4HttpsAgent = new https.Agent({
+  family: 4,
+  keepAlive: true,
+  lookup: resilientLookup
+});
 
 // Tiny inline TTL cache — avoids pulling node-cache as a dependency.
 const photoCacheStore = new Map(); // key -> { value, expiresAt }
@@ -168,4 +207,17 @@ const getDestinationPhoto = async (query) => {
   }
 };
 
-module.exports = { getDestinationPhoto };
+// Manual override: clears the cooldown and the cached fallback entries so the
+// next lookup retries Pexels immediately. Useful after a network hiccup.
+const resetCircuitBreaker = () => {
+  circuitBreakerUntil = 0;
+  breakerWarned = false;
+  // Drop short-lived fallback cache entries so the next call re-tries Pexels.
+  for (const [key, entry] of photoCacheStore.entries()) {
+    if (entry.expiresAt && entry.expiresAt - Date.now() < 35 * 60 * 1000) {
+      photoCacheStore.delete(key);
+    }
+  }
+};
+
+module.exports = { getDestinationPhoto, resetCircuitBreaker };

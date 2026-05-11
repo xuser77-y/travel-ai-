@@ -42,17 +42,35 @@ const photoCache = new Map();
 
 const fetchPlacePhoto = async (query) => {
   if (photoCache.has(query)) return photoCache.get(query);
-  // Wikipedia REST first (free, no key)
+  // Wikipedia first (free, no key). We use the `action=query` endpoint
+  // instead of `/page/summary/{title}` because the summary endpoint returns
+  // HTTP 404 for titles that don't match an article (e.g. "Gout de Fès"),
+  // which spams the browser console with "Failed to load resource: 404"
+  // that JS can't suppress. The query API always returns 200 OK with either
+  // a thumbnail or an empty page stub, so unknown places fail silently.
   try {
-    const res = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`
-    );
+    const url = new URL('https://en.wikipedia.org/w/api.php');
+    url.search = new URLSearchParams({
+      action: 'query',
+      prop: 'pageimages',
+      piprop: 'thumbnail',
+      pithumbsize: '640',
+      titles: query,
+      redirects: '1',
+      format: 'json',
+      origin: '*'
+    }).toString();
+    const res = await fetch(url);
     if (res.ok) {
       const data = await res.json();
-      if (data.thumbnail?.source) {
-        const url = data.thumbnail.source.replace(/\/\d+px-/, '/640px-');
-        photoCache.set(query, url);
-        return url;
+      const pages = data?.query?.pages || {};
+      for (const page of Object.values(pages)) {
+        const src = page?.thumbnail?.source;
+        if (src) {
+          const upscaled = src.replace(/\/\d+px-/, '/640px-');
+          photoCache.set(query, upscaled);
+          return upscaled;
+        }
       }
     }
   } catch {/* ignore */}

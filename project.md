@@ -24,17 +24,17 @@ We leverage a sophisticated mesh of free and premium services:
 ---
 
 ## ✨ Current Features (V1.0)
-- **AI Itinerary Engine**: Multi-step planning flow based on budget, interests, and dates.
-- **World Cup 2030 Hub**: 
-    - Real-time dynamic countdown.
-    - Interactive stadium map with live weather integration.
-    - Curated fan archetypes (The Ultimate Fan, Coastal Explorer).
-- **Multilingual UI**: Native support for English, French, and Arabic (RTL).
-- **Secure Authentication**: Google Social Login + 6-digit Email OTP verification.
-- **Admin Command Center**: Real-time operational dashboard with interactive growth and revenue analytics.
-- **Community Hubs**: Real-time persistent chat rooms with invitation codes and presence tracking.
-- **AI Concierge**: In-app trip refinement assistant for real-time itinerary edits.
-- **Premium UX**: Advanced dark/light mode with Recharts visualization and glassmorphism.
+- **AI Itinerary Engine**: Multi-step planning flow based on budget, interests, dates, and weather; AI even picks the destination from a free-form description.
+- **World Cup 2030 Hub**: dynamic countdown, interactive stadium map with live weather, curated fan archetypes, and per-host-city AI itineraries.
+- **Live Map**: real-time map with traveler-posted updates (text + photo + emotion), clustered crowd activity per zone, and AI-generated area summaries.
+- **Community Hubs**: real-time persistent chat rooms with invitation codes, presence tracking, and admin moderation.
+- **AI Concierge Chat**: in-app trip refinement assistant for real-time itinerary edits with no-op detection.
+- **Subscription & Billing**: free / basic / pro / premium tiers with feature gating, mock checkout for demos, real Stripe test-mode checkout, and printable PDF receipts.
+- **Notifications**: real-time admin broadcasts (global or targeted), expiry logic, and a navbar dropdown with read/unread counts.
+- **Multilingual UI**: native support for English, French, and Arabic (RTL).
+- **Secure Authentication**: Google Social Login + 6-digit Email OTP verification + scrypt-hashed passwords with legacy auto-upgrade.
+- **Admin Command Center**: real-time operational dashboard with Recharts analytics, user/trip/hub/live-post management, password-gated AI prompt editor, plan/feature configuration, and API usage monitoring.
+- **Premium UX**: full light/dark mode, Recharts visualization, glassmorphism, in-app toasts and confirm dialogs replacing every native `alert()`/`confirm()`.
 
 ---
 
@@ -62,10 +62,9 @@ To elevate Travio to a world-leading platform, we propose adding:
 ---
 
 ## 🏗️ Technical Architecture
-- **Frontend**: React 18 with Vite for maximum performance. Zustand for lightweight global state management.
-- **Backend**: Node.js & Express (RESTful API).
-- **Real-time**: Socket.io planned for collaborative features.
-- **Styling**: Pure Vanilla CSS with a custom-built design system (Design Tokens).
-
----
-*Created by Antigravity AI for the next generation of travelers.*
+- **Frontend**: React 18 with Vite for maximum performance. Zustand for lightweight global state management. React Router v6 for navigation. i18next for EN/FR/AR translations with RTL support.
+- **Backend**: Node.js + Express (RESTful API). Mongoose ODM. JWT authentication. `crypto.scrypt` password hashing. Multer for uploads.
+- **Database**: MongoDB (single datastore for users, trips, hubs, live posts, subscription history, AI prompt overrides, notifications).
+- **Real-time**: Socket.io is in production use today — powers Live Map broadcasts, Community Hub chat, presence tracking, and admin notifications.
+- **Styling**: Pure Vanilla CSS with a custom-built design system (CSS variables / design tokens) and a body-class light/dark theme switch.
+- **Hosting**: Backend on Render, frontend on Vercel; MongoDB Atlas (cloud) or local `mongodb://localhost:27017/travio` for development.

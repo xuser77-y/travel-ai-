@@ -194,10 +194,59 @@ const refineItinerary = async (currentTrip, userMessage) => {
     });
 
     const parsed = cleanJsonResponse(completion.choices[0].message.content);
-    if (parsed?.updatedTrip) {
-      parsed.updatedTrip = dedupeTimeSlots(parsed.updatedTrip);
-      parsed.updatedTrip = reattachPhotos(currentTrip, parsed.updatedTrip);
+    if (!parsed) return null;
+
+    // Salvage: the LLM sometimes forgets the `updatedTrip` wrapper and drops
+    // the trip shape at the top level (alongside aiResponse). Reconstruct
+    // the wrapper in that case so the caller can still save the changes
+    // instead of silently returning the unchanged trip.
+    if (!parsed.updatedTrip && Array.isArray(parsed.itinerary)) {
+      const { aiResponse, ...rest } = parsed;
+      parsed.updatedTrip = rest;
     }
+
+    // Hard validation — the route must be able to tell "AI produced an
+    // update" apart from "AI only chatted back". Without this, an empty /
+    // malformed updatedTrip would $set: {} into Mongo and the FE would see
+    // the AI's cheerful "done!" with no visible change to the itinerary.
+    if (
+      !parsed.updatedTrip ||
+      typeof parsed.updatedTrip !== 'object' ||
+      !Array.isArray(parsed.updatedTrip.itinerary) ||
+      parsed.updatedTrip.itinerary.length === 0
+    ) {
+      console.warn(
+        'Refine: LLM returned no usable updatedTrip. aiResponse=',
+        parsed.aiResponse
+      );
+      return { aiResponse: parsed.aiResponse || '', updatedTrip: null };
+    }
+
+    parsed.updatedTrip = dedupeTimeSlots(parsed.updatedTrip);
+    parsed.updatedTrip = reattachPhotos(currentTrip, parsed.updatedTrip);
+
+    // Detect a no-op: the LLM sometimes returns a full trip that is
+    // structurally identical to the input (same day count, same activity
+    // name in each slot). That looks like "success" to the backend but
+    // the user sees no visible change. We compare a canonical fingerprint
+    // of the itinerary and null out updatedTrip if nothing moved, so the
+    // route + FE can treat it as "AI chatted back but didn't edit".
+    const fingerprint = (trip) =>
+      (trip?.itinerary || [])
+        .map((d) =>
+          (d.sessions || [])
+            .map((s) => `${s?.time || ''}|${s?.activity?.name || ''}|${s?.activity?.cost ?? ''}`)
+            .join('»')
+        )
+        .join('§');
+    if (fingerprint(currentTrip) === fingerprint(parsed.updatedTrip)) {
+      console.warn(
+        'Refine: LLM returned an itinerary identical to input (no-op). aiResponse=',
+        parsed.aiResponse
+      );
+      return { aiResponse: parsed.aiResponse || '', updatedTrip: null };
+    }
+
     return parsed;
   } catch (error) {
     if (error.status === 429) {

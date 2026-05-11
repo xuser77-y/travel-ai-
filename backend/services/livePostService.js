@@ -78,7 +78,7 @@ const scorePosts = (posts, userLat, userLon) => {
   return posts
     .map((p) => {
       const ageHours = (now - new Date(p.createdAt).getTime()) / (1000 * 60 * 60);
-      const recency = Math.max(0, 1 - ageHours / 6);
+      const recency = Math.max(0, 1 - ageHours / 24);
       let proximity = 1;
       if (typeof userLat === 'number' && typeof userLon === 'number') {
         const d = distanceKm(userLat, userLon, p.location.lat, p.location.lon);

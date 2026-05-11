@@ -9,8 +9,8 @@
 ```
 ┌────────────────────────────────────────────────────────────┐
 │                       Browser (SPA)                        │
-│  React 18 + Vite + Zustand + React Router + Leaflet + MUI  │
-│  socket.io-client (singleton)   axios   i18next  framer    │
+│  React 18 + Vite + Zustand + React Router + Leaflet        │
+│  socket.io-client (singleton) axios i18next framer recharts│
 └──────────────┬───────────────────────────────┬─────────────┘
                │ REST  /api/*                  │ WebSocket
                ▼                               ▼
@@ -18,16 +18,18 @@
 │                Express server (Node.js, port 5000)         │
 │  ┌────────────────────────────────────────────────────┐    │
 │  │ Routes  (auth, trips, livemap, chat, search,       │    │
-│  │          worldcup, admin, payments, settings)      │    │
+│  │          worldcup, admin, payments, settings,      │    │
+│  │          notifications)                            │    │
 │  └────────────────────────────────────────────────────┘    │
 │  ┌────────────────────────────────────────────────────┐    │
 │  │ Services  (orchestrator, ai, weather, poi, photo,  │    │
-│  │            chat, prompt, password, apiTracker,     │    │
-│  │            onlineTracker, livePost, emailService)  │    │
+│  │            chat, prompt, password, planService,    │    │
+│  │            apiTracker, onlineTracker, livePost,    │    │
+│  │            emailService, stripeService)            │    │
 │  └────────────────────────────────────────────────────┘    │
 │  ┌────────────────────────────────────────────────────┐    │
 │  │ Mongoose models (User, Trip, ChatRoom, LivePost,   │    │
-│  │                  AiPrompt, TripRoom)               │    │
+│  │                  Notification, AiPrompt, TripRoom) │    │
 │  └────────────────────────────────────────────────────┘    │
 │  socket.io  •  JWT  •  scrypt  •  node-cache  •  multer    │
 └──────────────┬─────────────────────┬───────────────────────┘
@@ -37,7 +39,8 @@
        │   MongoDB    │      │  External APIs             │
        │   travio DB  │      │  Groq LLM, Open-Meteo,     │
        └──────────────┘      │  Photon, Nominatim, Pexels,│
-                             │  Overpass                  │
+                             │  Overpass, Google OAuth,   │
+                             │  Stripe (test mode)        │
                              └────────────────────────────┘
 ```
 
@@ -90,6 +93,9 @@ The frontend is a single-page Vite app. The backend is a single Express process 
 | **Nominatim (OSM)** | Fallback geocoder |
 | **Pexels** | Destination cover photos |
 | **Overpass API** | OSM points-of-interest near a coordinate |
+| **Google OAuth** | Social Login — one-tap ID token verified server-side |
+| **Stripe (test mode)** | Optional real-payment provider; `mock` is the default |
+| **Gmail SMTP (Nodemailer)** | OTP signup emails |
 
 ---
 
@@ -100,9 +106,12 @@ test project/
 ├─ backend/
 │  ├─ server.js              # Express + socket.io bootstrap
 │  ├─ models/                # Mongoose schemas
-│  ├─ routes/                # auth, trips, livemap, chat, search, worldcup, admin, payments, settings
+│  ├─ routes/                # auth, trips, livemap, chat, search, worldcup,
+│  │                         #   admin, payments, settings, notifications
 │  ├─ middleware/            # planGate (requireAuth, requireFeature, requireTripQuota)
-│  └─ services/              # business logic (orchestrator, ai, weather, etc.)
+│  ├─ services/              # business logic (orchestrator, ai, weather, etc.)
+│  └─ data/                  # plan-overrides.json + payment-config.json
+│                            #   (admin-editable, survives restarts)
 ├─ frontend/
 │  ├─ src/
 │  │  ├─ App.jsx             # Router + global providers
@@ -219,13 +228,15 @@ A single `socket.io` server is attached to the same HTTP server. The frontend op
 
 | Event | Direction | Payload |
 |-------|-----------|---------|
-| `livepost:new` | server → client | new live map post for everyone |
-| `livepost:delete` | server → client | post removal |
-| `chat:message` | both ways | community hub messages |
-| `online:list` | server → client | currently-connected users (admin) |
-| `api:hit` | server → admin | API tracker buffer entry |
+| `livemap:new_post` | server → client | new live map post for everyone |
+| `livemap:delete_post` | server → client | `{ _id }` — post removal |
+| `chat:message` | server → client | `{ roomId, message }` — community hub messages |
+| `presence:update` | server → client | `{ counts, sockets }` — online users (admin) |
+| `new_notification` | server → client | the full `Notification` doc, delivered to `user_<id>` rooms |
 
-`onlineTracker` keeps a `Map<socketId, identity>` and emits `online:list` when it changes. `apiTracker` is an Express middleware that increments per-route counters and pushes the latest N calls to a rolling buffer the admin console subscribes to.
+`onlineTracker` keeps a `Map<socketId, identity>` and emits `presence:update` when it changes. `apiTracker` is an Express middleware that increments per-route counters and pushes the latest N calls to a rolling buffer — the admin console fetches that buffer over HTTP (`GET /api/admin/api-usage`), it is **not** pushed over sockets.
+
+Per-user rooms are used for targeted notifications: on `setIdentity`, each socket joins `user_<userId>`; admin-side broadcasts then emit to that room (global mode emits to every room at once).
 
 ---
 
@@ -280,41 +291,73 @@ User clicks **"Generate My Dream Trip"** on Step 4:
 
 ```
 ┌─────────────────────────── Frontend ────────────────────────────┐
-│  /billing  ── Billing.jsx ── PayPal JS SDK ── Buttons            │
+│  /billing  ── Billing.jsx ── "Buy" button per tier               │
 │      │                                                           │
-│      │ create-order                       capture-order          │
-│      ▼                                       ▼                   │
+│      │ POST /payments/checkout (mock)                            │
+│      │ POST /payments/stripe/create-session → redirect           │
+│      ▼                                                           │
 │  /settings ── Settings.jsx (profile / password / sub / delete)   │
 │  PlanGate / usePlan() — single source of truth in the UI         │
 │  Loading.jsx renders an "Upgrade" screen on 402                  │
+│  lib/receipt.js — printable HTML invoice (window.print → PDF)    │
 └──────────────────────────────────────────────────────────────────┘
                     │ axios + JWT
                     ▼
 ┌─────────────────────────── Backend ─────────────────────────────┐
-│  routes/payments.js   │ /plans, /subscription, /checkout (mock), │
-│                       │ /receipt/:id                              │
+│  routes/payments.js   │ /plans, /subscription,                   │
+│                       │ /checkout (mock), /receipt/:id,          │
+│                       │ /stripe/create-session, /stripe/finalize │
 │  routes/settings.js   │ profile, password, delete                │
-│  routes/admin.js      │ /plans (PATCH features+price), grant /   │
-│                       │ revoke-trial / expire-plan                │
+│  routes/admin.js      │ /plans (PATCH features+price),           │
+│                       │ /payment-config (switch provider),       │
+│                       │ grant / revoke-trial / expire-plan       │
 │  middleware/planGate  │ requireAuth, requireFeature(f),          │
-│                       │ requireTripQuota                          │
+│                       │ requireTripQuota                         │
 │  services/planService │ PLAN_DEFS, ALL_FEATURES, effectivePlan,  │
-│                       │ userHasFeature                            │
+│                       │ userHasFeature, publicSubscription       │
+│  services/stripeSvc   │ wraps the Stripe SDK when enabled        │
+│  data/plan-overrides  │ admin edits to tier name/price/features  │
+│  data/payment-config  │ { provider: 'mock' | 'stripe' }          │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-The original PayPal sandbox client is gone (`paypalService.js` is now a deprecation stub) because the sandbox redirect forced testers to create a PayPal account, which made PFE demos painful. The replacement is a fully internal **mock checkout**:
+The original PayPal sandbox client was dropped (`paypalService.js` is now a deprecation stub that throws on import) because the sandbox redirect forced testers to create a PayPal account, which made PFE demos painful. Two providers ship in its place, switchable at runtime from the admin dashboard via `PATCH /api/admin/payment-config`:
 
-1. `POST /api/payments/checkout { plan }` — server-side only:
+### Provider 1 — `mock` (default)
+Instant, in-process simulated purchase. Ideal for the PFE jury demo; no third-party account needed.
+
+1. `POST /api/payments/checkout { plan }`:
    - validates the plan and that `priceMonthly > 0` (otherwise nudges the admin to set a price),
    - mints `MOCK-<timestamp>-<rand>` as the order id,
    - extends the user's `planExpiresAt` by 30 days (or stacks if the user is already on the same tier),
    - appends a `subscriptionHistory` entry with `provider: 'mock'`, `status: 'completed'`,
    - returns `{ subscription, historyId }` so the FE can immediately render a receipt.
 
-2. `GET /api/payments/receipt/:historyId` — returns a serialized receipt (buyer / seller / line items / totals / feature list). The frontend's `lib/receipt.js` builds a self-contained printable HTML page in a popup and auto-fires `window.print()`, so the user gets a PDF via the browser's "Save as PDF" without us shipping a PDF library.
+### Provider 2 — `stripe` (test mode, optional)
+Real Stripe Checkout that works worldwide without a buyer account — ideal for production-style demos. Requires `STRIPE_SECRET_KEY` in the backend `.env`.
 
-Receipts are also accessible from the purchase-history table (a **Receipt** button per row) for re-printing later.
+1. `POST /api/payments/stripe/create-session { plan }` — server-side only; returns the hosted Stripe Checkout URL. The FE redirects the browser there.
+2. On `success_url` the FE calls `POST /api/payments/stripe/finalize { sessionId }` which **idempotently** verifies the session (no double-credit on refresh) and credits the plan exactly as the mock path does, with `provider: 'stripe'` on the history entry.
+3. Use test card `4242 4242 4242 4242`, any future expiry, any CVC.
+
+### Receipts
+`GET /api/payments/receipt/:historyId` returns a serialized receipt (buyer / seller / line items / totals / feature list). The frontend's `lib/receipt.js` builds a self-contained printable HTML page in a popup and auto-fires `window.print()`, so the user gets a PDF via the browser's "Save as PDF" without shipping a PDF library. Receipts are also accessible from the purchase-history table (a **Receipt** button per row) for re-printing later.
+
+### Plan service (single source of truth)
+`services/planService.js`:
+- **`PLAN_DEFS`** — id → `{ name, priceMonthly, currency, features[] }`. Mutable in-process so the admin's `PATCH /api/admin/plans/:id` is reflected immediately; persisted to `backend/data/plan-overrides.json` so price edits survive restarts.
+- **`effectivePlan(user)`** — collapses `(plan, planExpiresAt, isAdmin)` into one of `'free' | 'basic' | 'pro' | 'premium'`. Admins always resolve to `'premium'`.
+- **`userHasFeature(user, feature)`** — the policy object every gate consults.
+- **`publicSubscription(user)`** — the FE-safe shape returned by `/auth/me`, `/payments/subscription` and `/settings/me`.
+- **`FEATURE_LABELS`** — id → human label (`'planner'` → `'AI Trip Planner'`).
+- **`ALL_FEATURES`** — stable, ordered list of every feature id.
+
+The admin **Plans & Billing** tab fetches `/api/admin/plans` and the public `/api/payments/plans` so the same label catalog drives the checkbox grid. When the admin ticks a feature on a plan, `PATCH /api/admin/plans/:id` is called with the new `features` array; the route filters every entry through `new Set(ALL_FEATURES)` so a typo can't accidentally unlock a non-existent feature anywhere. The Billing page renders **all** features on every plan card with a green ✓ "Yes" or grey ✗ "No" badge — read straight from `plan.features`.
+
+Admin (superadmin) bypasses everything:
+- Middleware short-circuits all gates when `req.user.isAdmin === true`.
+- The FE `usePlan()` hook returns the full feature list for admins regardless of `subscription`.
+- Admin actions: edit name / price / currency / description / highlight / features per tier; grant a plan, add trials, **revoke a trial** (`POST /users/:id/revoke-trial` caps `trialLimit` to current `freeTripsUsed`), force-expire any user's plan.
 
 ## 7c. Secure Authentication Subsystem (Google & Email OTP)
 
@@ -332,22 +375,19 @@ The auth layer was upgraded from simple password-checking to a modern multi-fact
    - Verification: `POST /api/auth/verify-otp` validates the code. On success, the account is activated and a JWT is issued.
    - Gating: `POST /api/auth/login` checks `isEmailVerified` and rejects unverified accounts, prompting them to complete the OTP flow.
 
-The single source of truth is `services/planService.js`:
-- **`PLAN_DEFS`** — id → `{ name, priceMonthly, currency, features[] }`. Mutable in-process so the admin's `PATCH /api/admin/plans/:id` is reflected immediately; persisted to `backend/data/plan-overrides.json` so price edits survive restarts.
-- **`effectivePlan(user)`** — collapses `(plan, planExpiresAt, isAdmin)` into one of `'free' | 'basic' | 'pro' | 'premium'`. Admins always resolve to `'premium'`.
-- **`userHasFeature(user, feature)`** — the policy object every gate consults.
-- **`publicSubscription(user)`** — the FE-safe shape returned by `/auth/me`, `/payments/subscription` and `/settings/me`.
+3. **Password hashing** — `crypto.scrypt` with random per-user salt, format `scrypt:<salt>:<hash>`. Legacy plaintext rows are auto-upgraded on the first successful login so the migration happens without a maintenance window.
 
-**Feature catalog & yes/no flags** — `services/planService.js` also exports:
-- `FEATURE_LABELS` — id → human label (`'planner'` → `'AI Trip Planner'`).
-- `ALL_FEATURES` — stable, ordered list of every feature id.
+## 7d. Notifications subsystem
 
-The admin **Plans & Billing** tab fetches both `/api/admin/plans` and the public `/api/payments/plans` so the same label catalog drives the checkbox grid. When the admin ticks a feature on a plan, `PATCH /api/admin/plans/:id` is called with the new `features` array; the route filters every entry through `new Set(ALL_FEATURES)` so a typo can't accidentally unlock a non-existent feature anywhere. The Billing page renders **all** features on every plan card with a green ✓ "Yes" or grey ✗ "No" badge — read straight from `plan.features`.
+Admin-to-user push layer, fully persisted and real-time.
 
-Admin (superadmin) bypasses everything:
-- The middleware short-circuits all gates when `req.user.isAdmin === true`.
-- The FE `usePlan()` hook returns the full feature list for admins regardless of `subscription`.
-- The admin **Plans & Billing** tab lets the superadmin: edit name / price / currency / description / highlight / **features (checkboxes)** for every tier; grant a plan, add trials, **revoke a trial** (`POST /users/:id/revoke-trial` caps `trialLimit` to current `freeTripsUsed`), or force-expire any user's plan.
+- **Model** — `models/Notification.js`: `{ sender, type: 'all' | 'specific', recipients[], title, message, link, expiresAt, createdAt }`.
+- **Broadcast endpoints** (`routes/notifications.js` + admin-gated creation in `routes/admin.js`):
+  - Admin composes a notification with optional targeting (all users / specific emails) and optional expiry date.
+  - Server persists one `Notification` document and emits `new_notification` to either every `user_<id>` room (global) or just the targeted rooms (specific).
+- **Expiry** — queries filter out docs where `expiresAt < now`; the FE also drops them from the dropdown the instant they expire (no refresh needed) by comparing against the client clock.
+- **Unread tracking** — `User.readNotifications[]` is an array of notification ids the user has dismissed. The FE-visible unread count = notifications − readNotifications, computed server-side in the `/notifications` listing.
+- **Navbar bell** — a Lucide bell icon with an unread badge; clicking opens a dropdown of notifications with relative timestamps (`2m ago`), **Mark as Read** and **Mark all as read** actions. Mobile falls back to a fullscreen overlay.
 
 ## 8. Conventions & gotchas
 
@@ -363,6 +403,9 @@ Admin (superadmin) bypasses everything:
 - **Mock checkout is not idempotent on the client** — every call to `POST /api/payments/checkout` mints a new `MOCK-...` order id. The FE's "Buy" button is `disabled` while in flight (`busyId === plan.id`) to prevent double-click double-charge.
 - **Plan & feature overrides** persist in `backend/data/plan-overrides.json` (price + currency + name + description + features array + highlight). Delete the file to revert every tier to the in-code defaults in `planService.PLAN_DEFS`.
 - **Adding a new feature** is a one-line change in `planService.FEATURE_LABELS`. Both the admin checkbox grid and the Billing yes/no matrix render it automatically. Don't forget to wire the actual `requireFeature('myFeature')` somewhere — `ALL_FEATURES` only describes the catalog, not the gates.
+- **Stripe finalize is idempotent** — `POST /api/payments/stripe/finalize` guards against double credits when the user refreshes the success page: it looks up the `sessionId` in `subscriptionHistory[].providerOrderId` before applying the plan change.
+- **AI refine no-op detection** — the refine endpoint compares an itinerary "fingerprint" (day + time slot + activity name + cost per session) before and after the LLM call; an unchanged fingerprint nulls out `updatedTrip` in the response so the FE shows a "please rephrase" hint instead of pretending it edited the trip. Same guard also catches the case where the LLM returned only `aiResponse` without the `updatedTrip` wrapper.
+- **Photo service resilience** — `photoService` forces IPv4, trips a 10-minute circuit breaker on network errors, and falls back to Cloudflare DNS (`1.1.1.1`) when the OS resolver returns `ENOTFOUND`/`EAI_AGAIN`. A curated per-destination fallback image is always returned so trip generation never fails for lack of a hero photo.
 
 ---
 

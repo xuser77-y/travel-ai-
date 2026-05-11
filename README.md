@@ -65,32 +65,45 @@ test project/
 ├── backend/
 │   ├── server.js                 # Express + Socket.io bootstrap
 │   ├── routes/
-│   │   ├── auth.js               # POST /api/auth/signup, /api/auth/login
-│   │   ├── trips.js              # generate / list / get / delete / refine trips
+│   │   ├── auth.js               # /api/auth/signup, /login, /verify-otp, /google
+│   │   ├── trips.js              # generate / list / get / delete / refine / suggest
 │   │   ├── search.js             # /api/search/proxy (Photon + Nominatim)
 │   │   ├── livemap.js            # posts CRUD + clusters + summary
 │   │   ├── chat.js               # hub list / join / leave / messages
 │   │   ├── worldcup.js           # /api/worldcup/cities (stadium dataset)
+│   │   ├── payments.js           # /plans, /subscription, /checkout (mock),
+│   │   │                         #   /receipt/:id, /stripe/{create-session,finalize}
+│   │   ├── settings.js           # profile, password, delete self
+│   │   ├── notifications.js      # list / mark-read + admin broadcast
 │   │   └── admin.js              # all /api/admin/* endpoints
+│   ├── middleware/
+│   │   └── planGate.js           # requireAuth, requireFeature, requireTripQuota
 │   ├── services/
 │   │   ├── aiService.js          # Groq itinerary + refine (uses promptService)
 │   │   ├── livePostService.js    # AI area summary + heuristic fallback
 │   │   ├── chatService.js        # findOrCreateRoom + ensureUserJoined
-│   │   ├── photoService.js       # Pexels destination photo
+│   │   ├── photoService.js       # Pexels destination photo (+ circuit breaker + DNS fallback)
 │   │   ├── poiService.js         # Overpass POI fetch
-│   │   ├── weatherService.js     # Open-Meteo forecast
+│   │   ├── weatherService.js     # Open-Meteo forecast + per-day verdict
 │   │   ├── plannerOrchestrator.js# parallel fetch + AI fallback
 │   │   ├── promptService.js      # registry/loader/renderer for AI prompts
+│   │   ├── planService.js        # PLAN_DEFS, features, effectivePlan, userHasFeature
+│   │   ├── stripeService.js      # wraps the Stripe SDK when enabled
+│   │   ├── emailService.js       # Nodemailer transactional emails (OTP)
 │   │   ├── password.js           # scrypt hash + verify (with legacy upgrade)
 │   │   ├── apiTracker.js         # counts/labels/recent calls per route
 │   │   └── onlineTracker.js      # socket.id → user mapping for presence
 │   ├── models/
-│   │   ├── User.js               # email + scrypt hash + isAdmin/disabled + activity
+│   │   ├── User.js               # email + scrypt + plan + trialLimit + history
 │   │   ├── Trip.js               # full itinerary doc
 │   │   ├── LivePost.js           # geo + sentiment + base64 image
 │   │   ├── ChatRoom.js           # hub with messages, participants, inviteCode
 │   │   ├── TripRoom.js           # legacy/light wrapper around ChatRoom
+│   │   ├── Notification.js       # admin broadcasts (global / specific + expiry)
 │   │   └── AiPrompt.js           # admin-editable prompt overrides (per key)
+│   ├── data/                     # admin-editable runtime config (survives restarts)
+│   │   ├── plan-overrides.json   # name / price / currency / features per tier
+│   │   └── payment-config.json   # { provider: 'mock' | 'stripe' }
 │   └── .env                      # see §6
 └── frontend/
     └── src/
@@ -103,11 +116,17 @@ test project/
         │   ├── LiveMap.jsx       # real-time map + my recent posts
         │   ├── Community.jsx     # persistent hubs + invite codes + presence
         │   ├── WorldCup.jsx      # host cities + AI planners + fan card
-        │   └── Admin.jsx         # full admin console (8 sections)
+        │   ├── Billing.jsx       # plan cards + checkout + receipts
+        │   ├── Settings.jsx      # profile / password / subscription / danger
+        │   ├── AdminPlans.jsx    # plan + feature editor (admin tab)
+        │   └── Admin.jsx         # full admin console
         ├── stores/tripStore.js
-        ├── lib/socket.js         # singleton socket.io client + identify()
+        ├── lib/
+        │   ├── socket.js         # singleton socket.io client + identify()
+        │   └── receipt.js        # printable HTML invoice (window.print → PDF)
         ├── components/
         │   ├── UI/               # Toast, ConfirmDialog providers
+        │   ├── Billing/PlanGate.jsx  # usePlan() + <PlanGate feature="..."/>
         │   └── ...
         └── i18n/                 # EN / FR / AR translations
 ```
@@ -146,12 +165,12 @@ Steps 1–7: Destination → Dates → Travelers/Budget → Style → Interests/
 ### 4.3 Trips API
 | Method | Path                                | Auth     | Notes |
 |--------|-------------------------------------|----------|-------|
-| POST   | `/api/trips/generate`               | optional | Generates itinerary via Groq, fetches weather, photo, POIs, persists with `userId` if token present |
+| POST   | `/api/trips/generate`               | required + quota | `requireAuth + requireTripQuota`; generates itinerary via Groq, fetches weather/photo/POIs, increments `freeTripsUsed` only on success |
 | POST   | `/api/trips/suggest-destination`    | none     | Powers Step 1's "Let AI choose for me": LLM picks one city from a free-form description, then geocodes via the search proxy |
 | GET    | `/api/trips/user`                   | required | Lists trips owned by the current user |
 | GET    | `/api/trips/:id`                    | optional | Returns one trip; ownership check if it has a `userId` |
 | DELETE | `/api/trips/:id`                    | required | Deletes only if `trip.userId === req.user.id` |
-| POST   | `/api/trips/refine`                 | optional | Sends user message to Groq; merges patch into trip |
+| POST   | `/api/trips/refine`                 | required + feature | `requireAuth + requireFeature('refine')`; returns `{ aiResponse, updatedTrip }`. `updatedTrip` is `null` when the LLM only chatted back or returned an itinerary identical to the input, so the FE can show a "rephrase" hint instead of a fake success |
 
 ### 4.4 Dashboard
 - Cards with **photo background**, status chip, date range, day count and a **Delete** button.
@@ -214,18 +233,20 @@ Steps 1–7: Destination → Dates → Travelers/Budget → Style → Interests/
 - Translations cover Navbar, Planner, Live Map, World Cup, Community, Dashboard.
 
 ### 4.12 Admin Console (`/admin`)
-Eight sections in one dashboard, all gated by JWT + `user.isAdmin === true` (re-checked from the DB on every request so demoting is instant):
+Ten sections in one dashboard, all gated by JWT + `user.isAdmin === true` (re-checked from the DB on every request so demoting is instant):
 
-| Section       | What it shows / does                                                                 |
-|---------------|---------------------------------------------------------------------------------------|
-| **Overview**  | Real-time analytics charts: **Revenue Growth (30d)**, **Current Plan Mix**, **Engagement Growth** (Users/Trips), and **Post Categories** distribution |
-| **Users**     | Search, paginate, promote/demote admin, disable/enable, delete user (and their trips), reset password |
-| **Online now**| Live socket list (user / IP / user-agent / connected-since / socket id), polled every 5 s |
-| **Trips**     | All trips with paginated list, open detail modal, delete trip or single activity     |
-| **Hubs**      | All chat rooms, open messages modal, edit/delete individual messages, delete hub     |
-| **Live Posts**| Every live post; delete; **realtime**: subscribes to `livemap:new_post` / `livemap:delete_post` so new posts appear instantly without manual refresh; manual `Refresh` button as belt-and-suspenders |
-| **API Usage** | Per-route call counts, status breakdown, success rate, recent-call buffer, reset button |
-| **AI Prompts**| **Password-gated** editor for every LLM prompt (see §4.13)                           |
+| Section            | What it shows / does                                                                 |
+|--------------------|---------------------------------------------------------------------------------------|
+| **Overview**       | Real-time analytics charts: **Revenue Growth (30d)**, **Current Plan Mix**, **Engagement Growth** (Users/Trips), and **Post Categories** distribution |
+| **Users**          | Search, paginate, promote/demote admin, disable/enable, delete user (and their trips), reset password, grant plan / trials, revoke trial, force-expire |
+| **Online now**     | Live socket list (user / IP / user-agent / connected-since / socket id), polled every 5 s |
+| **Trips**          | All trips with paginated list, open detail modal, delete trip or single activity     |
+| **Hubs**           | All chat rooms, open messages modal, edit/delete individual messages, delete hub     |
+| **Live Posts**     | Every live post; delete; **realtime**: subscribes to `livemap:new_post` / `livemap:delete_post` so new posts appear instantly without manual refresh; manual `Refresh` button as belt-and-suspenders |
+| **API Usage**      | Per-route call counts, status breakdown, success rate, recent-call buffer, reset button |
+| **AI Prompts**     | **Password-gated** editor for every LLM prompt (see §4.13)                           |
+| **Plans & Billing**| Per-tier editor (name / price / currency / description / highlight / features checkboxes); runtime **provider switch** between `mock` and `stripe`; per-user grant / trials / revoke / force-expire actions; overrides persist in `backend/data/plan-overrides.json` |
+| **Notifications**  | Compose and broadcast a `Notification` to all users or to specific emails, with an optional expiry date; delivered in real time via the `new_notification` socket event |
 
 All destructive actions use the in-app `useConfirm()` modal with copy explaining the consequences; outcomes are reported via toasts.
 
@@ -328,31 +349,54 @@ A robust messaging layer allowing administrators to push alerts to logged-in use
 `backend/.env`:
 
 ```
+# --- Core ------------------------------------------------------------
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/travio
+MONGODB_URI=mongodb://localhost:27017/travio      # or your MongoDB Atlas URI
+JWT_SECRET=<long_random_string>
+
+# --- AI & external APIs ---------------------------------------------
 GROQ_API_KEY=<your_groq_key>
 PEXELS_API_KEY=<your_pexels_key>
-JWT_SECRET=<long_random_string>
-# Google Auth (Social Login)
+
+# --- Google OAuth (Social Login) ------------------------------------
 GOOGLE_CLIENT_ID=<your_google_client_id>
-# Email OTP (Nodemailer)
+
+# --- Email OTP (Nodemailer / Gmail SMTP) ----------------------------
 EMAIL_USER=<your_gmail@gmail.com>
 EMAIL_PASS=<your_gmail_app_password>
+
+# --- Admin bootstrap -------------------------------------------------
+# Comma-separated list of emails auto-promoted to superadmin on login.
+ADMIN_EMAIL=you@example.com
+
+# --- Billing (optional — mock is the default) ------------------------
+# Switch via the admin Plans & Billing tab; persists in data/payment-config.json
+PAYMENT_PROVIDER=mock                             # 'mock' | 'stripe'
+STRIPE_SECRET_KEY=sk_test_...                     # only if provider = stripe
+FRONTEND_URL=http://localhost:5173                # used in Stripe success/cancel redirects
 ```
 
 `frontend/.env`:
+
 ```bash
+VITE_API_URL=http://localhost:5000                # backend base URL
 VITE_GOOGLE_CLIENT_ID=<your_google_client_id>
+VITE_PEXELS_KEY=<optional_pexels_key>             # enables inline Pexels photos in map popups
 ```
 
-Frontend points to `http://localhost:5000` from `frontend/src/pages/*.jsx` and `frontend/src/lib/socket.js`.
+When `VITE_API_URL` is absent the frontend falls back to `http://localhost:5000` (see `frontend/src/pages/*.jsx` and `frontend/src/lib/socket.js`).
 
 ### Bootstrapping the first admin
-- Sign up normally, then in MongoDB set `isAdmin: true` on your user document, e.g.:
-  ```js
-  db.users.updateOne({ email: 'you@example.com' }, { $set: { isAdmin: true } })
-  ```
-- After that, additional admins can be promoted from the **Users** tab in the console.
+
+Two ways, pick whichever is easier:
+
+1. **Easiest** — put your email in the `ADMIN_EMAIL` comma-separated whitelist in `backend/.env`. Every login from a whitelisted email is auto-promoted to superadmin on the spot (no manual DB edit).
+2. **Manual** — sign up normally, then in MongoDB set `isAdmin: true` on your user document:
+   ```js
+   db.users.updateOne({ email: 'you@example.com' }, { $set: { isAdmin: true } })
+   ```
+
+After either step, additional admins can be promoted from the **Users** tab in the console.
 
 ---
 
@@ -422,7 +466,7 @@ Get-NetTCPConnection -LocalPort 5000 | Select-Object -ExpandProperty OwningProce
 - [ ] Prompt diff / revision history in the admin editor
 
 ### Medium term
-- [ ] OAuth (Google) + proper signup flow
+- [ ] Password reset over email (OTP today is signup-only)
 - [ ] Saved POIs / favorites and trip versioning
 - [ ] Push notifications for nearby Live Map activity
 - [ ] Multi-destination itineraries

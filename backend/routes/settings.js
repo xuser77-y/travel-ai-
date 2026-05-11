@@ -49,7 +49,7 @@ router.patch('/profile', async (req, res) => {
     if (Object.keys(allowed).length === 0) {
       return res.status(400).json({ error: 'Nothing to update' });
     }
-    const user = await User.findByIdAndUpdate(req.user._id, { $set: allowed }, { new: true }).select('-password');
+    const user = await User.findByIdAndUpdate(req.user._id, { $set: allowed }, { returnDocument: 'after' }).select('-password');
     res.json({
       id: user._id,
       name: user.name,

@@ -88,6 +88,14 @@ const Admin = () => {
     [token]
   );
 
+  // Bring the page back to the top whenever the user switches admin tabs.
+  // Without this, deep-scrolling through a long list (e.g. Users) and then
+  // clicking another sidebar item leaves them looking at the bottom of the
+  // new section instead of its header.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [section]);
+
   // Guard: redirect non-admins.
   useEffect(() => {
     if (!token) {
@@ -161,7 +169,7 @@ const Admin = () => {
             headers,
             params: { page: payments.page, limit: 20 }
           });
-          if (!cancelled) setPayments({ items: res.data.items, total: res.data.total, page: res.data.page });
+          if (!cancelled) setPayments({ items: res.data.items, total: res.data.total, page: res.data.page, limit: 20 });
         }
       } catch (err) {
         if (!cancelled) {
@@ -447,10 +455,10 @@ const Admin = () => {
     { id: 'trips', label: t('admin.sidebar.itineraries'), icon: MapPinned },
     { id: 'rooms', label: t('admin.sidebar.chathubs'), icon: MessagesSquare },
     { id: 'liveposts', label: t('admin.sidebar.livemap'), icon: Radio },
-    { id: 'apiusage', label: 'API Usage', icon: BarChart3 },
+    { id: 'apiusage', label: t('admin.sidebar.logs'), icon: Wifi },
     { id: 'prompts', label: t('admin.sidebar.prompts'), icon: BookOpen },
-    { id: 'plans', label: t('admin.sidebar.payments'), icon: CreditCard },
-    { id: 'payments', label: 'Payments', icon: TrendingUp },
+    { id: 'plans', label: 'Plans & Billing', icon: CreditCard },
+    { id: 'payments', label: t('admin.sidebar.payments'), icon: TrendingUp },
     { id: 'notifications', label: t('admin.sidebar.notifications'), icon: Bell }
   ];
 
@@ -483,26 +491,26 @@ const Admin = () => {
               <Activity size={18} /> {t('admin.sidebar.online')}
             </button>
             <button
-              className={`admin-nav-item ${section === 'livemap' ? 'active' : ''}`}
-              onClick={() => setSection('livemap')}
+              className={`admin-nav-item ${section === 'liveposts' ? 'active' : ''}`}
+              onClick={() => setSection('liveposts')}
             >
               <MapPinned size={18} /> {t('admin.sidebar.livemap')}
             </button>
             <button
-              className={`admin-nav-item ${section === 'chathubs' ? 'active' : ''}`}
-              onClick={() => setSection('chathubs')}
+              className={`admin-nav-item ${section === 'rooms' ? 'active' : ''}`}
+              onClick={() => setSection('rooms')}
             >
               <MessagesSquare size={18} /> {t('admin.sidebar.chathubs')}
             </button>
             <button
-              className={`admin-nav-item ${section === 'itineraries' ? 'active' : ''}`}
-              onClick={() => setSection('itineraries')}
+              className={`admin-nav-item ${section === 'trips' ? 'active' : ''}`}
+              onClick={() => setSection('trips')}
             >
               <Radio size={18} /> {t('admin.sidebar.itineraries')}
             </button>
             <button
-              className={`admin-nav-item ${section === 'logs' ? 'active' : ''}`}
-              onClick={() => setSection('logs')}
+              className={`admin-nav-item ${section === 'apiusage' ? 'active' : ''}`}
+              onClick={() => setSection('apiusage')}
             >
               <Wifi size={18} /> {t('admin.sidebar.logs')}
             </button>
@@ -510,7 +518,13 @@ const Admin = () => {
               className={`admin-nav-item ${section === 'payments' ? 'active' : ''}`}
               onClick={() => setSection('payments')}
             >
-              <CreditCard size={18} /> {t('admin.sidebar.payments')}
+              <TrendingUp size={18} /> {t('admin.sidebar.payments')}
+            </button>
+            <button
+              className={`admin-nav-item ${section === 'plans' ? 'active' : ''}`}
+              onClick={() => setSection('plans')}
+            >
+              <CreditCard size={18} /> Plans &amp; Billing
             </button>
             <button
               className={`admin-nav-item ${section === 'prompts' ? 'active' : ''}`}
@@ -526,7 +540,7 @@ const Admin = () => {
             </button>
           </nav>
           <button className="admin-back" onClick={() => navigate('/')}>
-            <ArrowLeft size={14} /> {t('admin.sidebar.backToSite')}
+            <ArrowLeft size={14} /> {t('back')}
           </button>
         </aside>
 
@@ -1621,9 +1635,6 @@ const ApiUsageSection = ({ data, onRefresh, onReset }) => {
       <div className="online-summary">
         <SummaryPill label="Total requests" value={data.totalRequests} highlight />
         <SummaryPill label="Uptime" value={fmtUptime(data.uptimeSec || 0)} />
-        <SummaryPill label="2xx" value={data.status?.['2xx'] || 0} />
-        <SummaryPill label="4xx" value={data.status?.['4xx'] || 0} />
-        <SummaryPill label="5xx" value={data.status?.['5xx'] || 0} />
       </div>
 
       <div className="section-toolbar">
