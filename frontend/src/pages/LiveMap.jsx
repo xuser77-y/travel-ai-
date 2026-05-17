@@ -6,12 +6,13 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import {
   Send, MapPin, Sparkles, AlertTriangle, Users, Utensils,
-  Bus, CloudSun, Shield, ThumbsUp, Filter, Crosshair, RefreshCw, X, Navigation, Trash2, Clock
+  Bus, CloudSun, Shield, ThumbsUp, Filter, Crosshair, RefreshCw, X, Navigation, Trash2, Clock, ImagePlus
 } from 'lucide-react';
 import useTripStore from '../stores/tripStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { useToast } from '../components/UI/Toast';
 import { useConfirm } from '../components/UI/ConfirmDialog';
+import ImageLightbox from '../components/UI/ImageLightbox';
 import './LiveMap.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -92,6 +93,48 @@ function ThemedTileLayer() {
   );
 }
 
+// Down-scale a user-picked image to JPEG base64 capped at MAX_DIM × MAX_DIM.
+// We never trust the browser to send a 12 MP photo as-is — every upload
+// goes through a <canvas> re-encode at quality 0.82 which typically lands
+// around 80–250 KB, well under the backend's 3 MB hard cap.
+const MAX_DIM = 1280;
+const JPEG_QUALITY = 0.82;
+const MAX_RAW_BYTES = 8 * 1024 * 1024; // refuse anything above ~8 MB before decoding
+
+const downscaleToBase64 = (file) => new Promise((resolve, reject) => {
+  if (!file || !file.type?.startsWith('image/')) {
+    reject(new Error('Not an image'));
+    return;
+  }
+  if (file.size > MAX_RAW_BYTES) {
+    reject(new Error('TOO_LARGE'));
+    return;
+  }
+  const reader = new FileReader();
+  reader.onerror = () => reject(reader.error);
+  reader.onload = () => {
+    const img = new Image();
+    img.onerror = () => reject(new Error('Could not decode image'));
+    img.onload = () => {
+      const ratio = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+      const w = Math.round(img.width * ratio);
+      const h = Math.round(img.height * ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      try {
+        resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
+
 // Stable per-browser identity used to prove ownership of LiveMap posts when
 // the user isn't logged in. We store a UUID once and keep reusing it.
 const guestAuthorId = (() => {
@@ -122,6 +165,10 @@ const LiveMap = () => {
   const [pickedPos, setPickedPos] = useState(null);
   const [draftType, setDraftType] = useState('crowd');
   const [draftMsg, setDraftMsg] = useState('');
+  // Optional photo attached to the next post — already downscaled to a
+  // base64 JPEG data URL by the time it lands here.
+  const [draftImage, setDraftImage] = useState('');
+  const fileInputRef = useRef(null);
   const [posting, setPosting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [aiSummary, setAiSummary] = useState(null);
@@ -131,6 +178,9 @@ const LiveMap = () => {
   // Timestamp of the last "Remove picked location" action; used to
   // suppress map.click that immediately follows the popup unmount.
   const removeCooldownRef = useRef(0);
+  // Holds the data URL of the photo currently shown full-size in the
+  // lightbox. `null` keeps the lightbox closed.
+  const [lightboxSrc, setLightboxSrc] = useState(null);
 
   // Initial fetch + socket. We deliberately do NOT auto-seed when the
   // collection is empty — `/seed` wipes every existing post before
@@ -215,13 +265,16 @@ const LiveMap = () => {
           message: draftMsg.trim(),
           location: loc,
           author: user?.name || 'Anonymous Traveler',
-          authorId: myAuthorId
+          authorId: myAuthorId,
+          image: draftImage || undefined
         },
         { headers: authHeaders }
       );
       // Optimistic add (socket will also push)
       setPosts((prev) => [res.data, ...prev.filter((p) => p._id !== res.data._id)]);
       setDraftMsg('');
+      setDraftImage('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       setPickedPos(null);
       // Refresh the freemium counter so the gate flips to "locked"
       // immediately if this was the 3rd free use.
@@ -367,6 +420,61 @@ const LiveMap = () => {
                 maxLength={280}
                 rows={3}
               />
+
+              {/* Optional photo attachment — hidden file input + visible button */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const dataUrl = await downscaleToBase64(file);
+                    setDraftImage(dataUrl);
+                  } catch (err) {
+                    if (err?.message === 'TOO_LARGE') {
+                      toast.error(t('liveMap.photoTooLarge'));
+                    } else {
+                      console.error('Image read failed:', err);
+                      toast.error(t('liveMap.photoTooLarge'));
+                    }
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }
+                }}
+              />
+              {draftImage ? (
+                <div className="photo-preview">
+                  <img
+                    src={draftImage}
+                    alt="upload preview"
+                    className="preview-clickable"
+                    onClick={() => setLightboxSrc(draftImage)}
+                  />
+                  <button
+                    type="button"
+                    className="photo-preview-remove"
+                    onClick={() => {
+                      setDraftImage('');
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    aria-label={t('liveMap.removePhoto')}
+                    title={t('liveMap.removePhoto')}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="photo-attach-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImagePlus size={14} /> {t('liveMap.addPhoto')}
+                </button>
+              )}
+
               <div className="form-foot">
                 {pickedPos ? (
                   <span className="hint pick-chip">
@@ -446,10 +554,15 @@ const LiveMap = () => {
                         onClick={() => analyzeArea(p.location.lat, p.location.lon, 0.6)}
                         title="Locate on map"
                       >
-                        <p className="mp-msg">{p.message}</p>
-                        <span className="mp-meta">
-                          <Clock size={10} /> {timeAgo(p.createdAt)}
-                          {p.location?.name && <> · {p.location.name}</>}
+                        {p.image && (
+                          <img src={p.image} alt="" className="mp-thumb" loading="lazy" />
+                        )}
+                        <span className="mp-text">
+                          <p className="mp-msg">{p.message}</p>
+                          <span className="mp-meta">
+                            <Clock size={10} /> {timeAgo(p.createdAt)}
+                            {p.location?.name && <> · {p.location.name}</>}
+                          </span>
                         </span>
                       </button>
                       <button
@@ -558,6 +671,21 @@ const LiveMap = () => {
                 <Popup>
                   <div className="lm-popup">
                     <span className={`tag t-${p.sentiment}`}>{p.type}</span>
+                    {p.image && (
+                      <img
+                        src={p.image}
+                        alt="post attachment"
+                        className="popup-image preview-clickable"
+                        loading="lazy"
+                        onClick={(e) => {
+                          // Stop the click reaching the Leaflet popup so the
+                          // lightbox can mount cleanly without re-triggering
+                          // analyzeArea on the underlying marker.
+                          e.stopPropagation();
+                          setLightboxSrc(p.image);
+                        }}
+                      />
+                    )}
                     <p>{p.message}</p>
                     <small>
                       {p.author} · {new Date(p.createdAt).toLocaleTimeString([], {
@@ -603,6 +731,9 @@ const LiveMap = () => {
           </div>
         </div>
       </div>
+
+      {/* Full-screen image preview (Esc / click outside to close). */}
+      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </div>
   );
 };

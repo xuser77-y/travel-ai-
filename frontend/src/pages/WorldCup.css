@@ -634,9 +634,49 @@ body.light-mode .wc-hero-v2 .btn-glass:hover {
   margin-right: 6px;
 }
 
-.sc-more-btn {
+/* Two-button row: 360° tour + See more */
+.sc-actions {
   margin-top: 10px;
-  width: 100%;
+  display: flex;
+  gap: 8px;
+}
+
+.sc-360-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--sunset-orange, #f97316);
+  background: linear-gradient(135deg, var(--sunset-orange, #f97316), #be123c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.sc-360-btn:hover:not(.is-disabled):not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -8px rgba(190, 18, 60, 0.55);
+}
+
+.sc-360-btn.is-disabled,
+.sc-360-btn:disabled {
+  background: var(--bg-elev, rgba(148, 163, 184, 0.15));
+  color: var(--text-muted, #94a3b8);
+  border-color: var(--border, rgba(148, 163, 184, 0.25));
+  cursor: not-allowed;
+  opacity: 0.7;
+  /* Keeps the disabled label readable instead of nearly invisible. */
+  background-image: none;
+}
+
+.sc-more-btn {
+  flex: 1;
+  margin-top: 0;
   padding: 10px;
   border-radius: 10px;
   background: var(--glass-bg);

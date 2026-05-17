@@ -8,7 +8,8 @@
     "features": [
       "planner",
       "worldcup",
-      "refine"
+      "refine",
+      "community"
     ]
   },
   "free": {

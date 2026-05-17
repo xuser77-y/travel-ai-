@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Trophy, Users, Star, Clock, Compass, Zap, ExternalLink, ArrowRight, MessageCircle, Calendar, Sparkles } from 'lucide-react';
+import { MapPin, Trophy, Users, Star, Clock, Compass, Zap, ExternalLink, ArrowRight, MessageCircle, Calendar, Sparkles, Camera } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -10,6 +10,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import TiltCard from '../components/WorldCup3D/TiltCard';
 import StadiumRouteMap from '../components/WorldCup3D/StadiumRouteMap';
 import StadiumModal from '../components/WorldCup3D/StadiumModal';
+import VirtualTourModal from '../components/WorldCup3D/VirtualTourModal';
 import './WorldCup.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -58,6 +59,23 @@ const TOURNAMENT_FACTS = {
   ]
 };
 
+// Map of stadiums for which we have a real 360° virtual tour. Hosted by
+// SONARGES (the Moroccan stadium operator). Any city not in this map
+// renders the "View 360°" button in a disabled state — the feature is
+// visible but clearly marked as not yet available, so users know it's
+// coming for the rest. Keyed by `city.name` exactly as returned by
+// `GET /api/worldcup/cities` (Tangier / Agadir / Marrakech).
+const VR_TOURS = {
+  Tangier:    'https://sonarges.ma/visite-virtuelle/GrandStadedeTanger/',
+  Agadir:     'https://sonarges.ma/visite-virtuelle/GrandStadedeAgadir/',
+  Marrakech:  'https://sonarges.ma/visite-virtuelle/GrandStadedeMarrakech/'
+};
+
+// Resolve the SONARGES tour URL for a given city, or `null` if we don't
+// have one. The component opens the URL inside an in-app iframe modal
+// (`VirtualTourModal`) instead of redirecting away from Travio.
+const getVrTourUrl = (cityName) => VR_TOURS[cityName] || null;
+
 // Numbered DivIcon marker for stadium pins
 const makeStadiumIcon = (number) => L.divIcon({
   className: 'wc-marker-wrap',
@@ -104,6 +122,10 @@ const WorldCup = () => {
   const [cities, setCities] = useState([]);
   const [activeCity, setActiveCity] = useState(null);
   const [selectedStadium, setSelectedStadium] = useState(null);
+  // Currently-open virtual tour: { url, title } or null when closed.
+  // Lives at the page level so the card button and the detail modal
+  // both feed into the same single-instance viewer.
+  const [activeTour, setActiveTour] = useState(null);
   const [loading, setLoading] = useState(true);
   // Plan gate: a 402 from /api/worldcup/cities means the user's plan
   // doesn't include the World Cup feature. We render a soft upgrade
@@ -249,9 +271,27 @@ const WorldCup = () => {
 
       {/* Stadium Details Modal */}
       {selectedStadium && (
-        <StadiumModal 
-          stadium={selectedStadium} 
-          onClose={() => setSelectedStadium(null)} 
+        <StadiumModal
+          stadium={selectedStadium}
+          vrTourUrl={getVrTourUrl(selectedStadium.name)}
+          onOpenTour={() => {
+            const url = getVrTourUrl(selectedStadium.name);
+            if (!url) return;
+            // Close the detail modal first so the tour viewer is the only
+            // overlay on screen — keeps focus management simple.
+            setActiveTour({ url, title: selectedStadium.stadium });
+            setSelectedStadium(null);
+          }}
+          onClose={() => setSelectedStadium(null)}
+        />
+      )}
+
+      {/* In-app 360° viewer (iframe + fallback). */}
+      {activeTour && (
+        <VirtualTourModal
+          url={activeTour.url}
+          title={activeTour.title}
+          onClose={() => setActiveTour(null)}
         />
       )}
 
@@ -409,9 +449,40 @@ const WorldCup = () => {
                   {city.architect && (
                     <p className="sc-architect"><span>{t('worldCup.architect')}</span> {city.architect}</p>
                   )}
-                  <button className="sc-more-btn">
-                    {t('worldCup.seeMore')} <ArrowRight size={14} />
-                  </button>
+                  <div className="sc-actions">
+                    {VR_TOURS[city.name] ? (
+                      <button
+                        type="button"
+                        className="sc-360-btn"
+                        onClick={(e) => {
+                          // Stop the click reaching the card wrapper, which
+                          // would otherwise open the detail modal on top of
+                          // the embedded tour viewer.
+                          e.stopPropagation();
+                          setActiveTour({
+                            url: VR_TOURS[city.name],
+                            title: city.stadium
+                          });
+                        }}
+                        title={t('worldCup.view360')}
+                      >
+                        <Camera size={14} /> {t('worldCup.view360')}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="sc-360-btn is-disabled"
+                        disabled
+                        onClick={(e) => e.stopPropagation()}
+                        title={t('worldCup.view360Soon')}
+                      >
+                        <Camera size={14} /> {t('worldCup.view360Soon')}
+                      </button>
+                    )}
+                    <button className="sc-more-btn">
+                      {t('worldCup.seeMore')} <ArrowRight size={14} />
+                    </button>
+                  </div>
                 </div>
               </TiltCard>
             ))

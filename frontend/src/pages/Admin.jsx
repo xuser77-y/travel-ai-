@@ -17,6 +17,7 @@ import { useToast } from '../components/UI/Toast';
 import AdminPlans from './AdminPlans';
 import { useConfirm } from '../components/UI/ConfirmDialog';
 import { useTranslation } from '../hooks/useTranslation';
+import ImageLightbox from '../components/UI/ImageLightbox';
 import './Admin.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -1148,6 +1149,9 @@ const RoomsSection = ({ rooms, onDelete, onOpenMessages }) => (
 const LivePostsSection = ({ headers, toast, confirm }) => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
+  // Holds the data URL of the post currently shown full-size in the
+  // lightbox. `null` keeps the lightbox closed.
+  const [lightboxSrc, setLightboxSrc] = useState(null);
 
   const fetchPosts = async () => {
     try {
@@ -1211,6 +1215,7 @@ const LivePostsSection = ({ headers, toast, confirm }) => {
           <RefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
         </button>
       </div>
+      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
       <div className="post-grid">
         {posts.map((p) => (
           <article key={p._id} className="post-card">
@@ -1227,6 +1232,22 @@ const LivePostsSection = ({ headers, toast, confirm }) => {
               <span className="muted">▲ {p.upvotes || 0}</span>
             </div>
             <p>{p.message || ''}</p>
+            {p.image && (
+              <button
+                type="button"
+                className="post-image-btn"
+                onClick={() => setLightboxSrc(p.image)}
+                title="Click to preview"
+                aria-label="Preview image"
+              >
+                <img
+                  src={p.image}
+                  alt="Live post attachment"
+                  className="post-image preview-clickable"
+                  loading="lazy"
+                />
+              </button>
+            )}
             {p.location && (
               <span className="muted">
                 📍 {p.location.name || `${p.location.lat?.toFixed(2)}, ${p.location.lon?.toFixed(2)}`}

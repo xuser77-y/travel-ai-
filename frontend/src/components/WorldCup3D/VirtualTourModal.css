@@ -1,0 +1,158 @@
+/* ============================================================
+   Virtual Tour Modal — full-screen iframe viewer with our chrome
+   ============================================================ */
+
+.vr-tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #000;
+  animation: vrFade 0.2s ease-out;
+}
+
+@keyframes vrFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.vr-tour-shell {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+  animation: vrZoom 0.25s cubic-bezier(0.2, 0.8, 0.3, 1.1);
+}
+
+@keyframes vrZoom {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* Floating chrome sits on top of the iframe so the tour fills 100 % of
+   the viewport. High z-index keeps the buttons clickable above the
+   iframe content. */
+.vr-tour-floating-actions {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vr-tour-action {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.5);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.vr-tour-action:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.08);
+}
+
+.vr-tour-frame-wrap {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+.vr-tour-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* Loading state ------------------------------------------------ */
+.vr-tour-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: #cbd5e1;
+  background: #0b1220;
+  z-index: 1;
+}
+
+.vr-tour-spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 3px solid rgba(148, 163, 184, 0.25);
+  border-top-color: #f97316;
+  animation: vrSpin 0.85s linear infinite;
+}
+
+@keyframes vrSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Blocked / fallback state ------------------------------------- */
+.vr-tour-blocked {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 24px;
+  color: #e2e8f0;
+  background: #0b1220;
+}
+
+.vr-tour-blocked svg {
+  color: #f59e0b;
+}
+
+.vr-tour-blocked h3 {
+  margin: 4px 0 0;
+  font-size: 1.1rem;
+}
+
+.vr-tour-blocked p {
+  margin: 0;
+  max-width: 460px;
+  color: #94a3b8;
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+
+.vr-tour-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f97316, #be123c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  margin-top: 6px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vr-tour-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -10px rgba(190, 18, 60, 0.7);
+}
+

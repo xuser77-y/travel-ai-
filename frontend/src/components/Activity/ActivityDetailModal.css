@@ -1,0 +1,397 @@
+/* ===========================================================================
+   Activity Detail Modal
+   Opens when an activity card is clicked on the Trip Results page.
+   Dark mode is the default; .light-mode overrides at the bottom.
+=========================================================================== */
+
+.activity-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(8, 10, 18, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: act-modal-fade 180ms ease-out;
+}
+
+@keyframes act-modal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.activity-modal {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border-radius: 22px;
+  background: rgba(20, 22, 38, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 4px 14px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  animation: act-modal-slide 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes act-modal-slide {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* ----------------------------- Hero ----------------------------- */
+.activity-modal-hero {
+  position: relative;
+  height: 260px;
+  background-color: #1d2033;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+.activity-modal-hero.no-photo {
+  background: linear-gradient(135deg, #2a2f55 0%, #4f3a8f 100%);
+}
+
+.activity-modal-hero-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.activity-modal-hero-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.15) 45%,
+    rgba(8, 10, 18, 0.85) 100%
+  );
+}
+
+.activity-modal-category {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(124, 92, 255, 0.85);
+  color: #fff;
+}
+
+.activity-modal-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+  line-height: 1.2;
+}
+
+.activity-modal-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.activity-modal-meta-row .meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+
+.activity-modal-meta-row .meta-pill.highlight {
+  background: rgba(255, 196, 0, 0.22);
+  color: #ffdd6b;
+}
+
+.activity-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 10, 18, 0.55);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.activity-modal-close:hover {
+  background: rgba(0, 0, 0, 0.85);
+  transform: scale(1.05);
+}
+
+/* ----------------------------- Body ----------------------------- */
+.activity-modal-body {
+  padding: 22px 26px 26px;
+  overflow-y: auto;
+  color: rgba(255, 255, 255, 0.88);
+  flex: 1 1 auto;
+}
+
+.activity-modal-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 6px 0 12px;
+}
+
+.activity-modal-loading .spin {
+  animation: act-modal-spin 1s linear infinite;
+}
+
+@keyframes act-modal-spin {
+  to { transform: rotate(360deg); }
+}
+
+.activity-modal-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 99, 99, 0.12);
+  color: #ffadad;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+}
+
+.activity-modal-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.highlight-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(124, 92, 255, 0.18);
+  color: #c8b8ff;
+}
+
+.activity-modal-section {
+  margin-bottom: 18px;
+}
+
+.activity-modal-section:last-of-type {
+  margin-bottom: 8px;
+}
+
+.activity-modal-section h3 {
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.activity-modal-description {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.activity-modal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-modal-list li {
+  position: relative;
+  padding: 10px 14px 10px 36px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.activity-modal-list li::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+}
+
+.why-list li::before {
+  background: linear-gradient(135deg, #7c5cff, #c084fc);
+  box-shadow: 0 0 10px rgba(124, 92, 255, 0.6);
+}
+
+.tips-list li::before {
+  background: linear-gradient(135deg, #ffb84d, #ffd86b);
+  box-shadow: 0 0 10px rgba(255, 184, 77, 0.55);
+}
+
+/* ----------------------------- Actions ----------------------------- */
+.activity-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.activity-modal-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+
+.activity-modal-actions .btn-primary {
+  background: linear-gradient(135deg, #7c5cff, #5b8cff);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(124, 92, 255, 0.4);
+}
+
+.activity-modal-actions .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(124, 92, 255, 0.55);
+}
+
+.activity-modal-actions .btn-ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.activity-modal-actions .btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ----------------------------- Light mode ----------------------------- */
+.light-mode .activity-modal-backdrop {
+  background: rgba(15, 20, 35, 0.45);
+}
+
+.light-mode .activity-modal {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 30px 80px rgba(80, 80, 130, 0.25), 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.light-mode .activity-modal-body {
+  color: #2a2f44;
+}
+
+.light-mode .activity-modal-description {
+  color: #2a2f44;
+}
+
+.light-mode .activity-modal-section h3 {
+  color: rgba(60, 50, 100, 0.78);
+}
+
+.light-mode .activity-modal-list li {
+  background: rgba(124, 92, 255, 0.05);
+  border-color: rgba(124, 92, 255, 0.12);
+  color: #2a2f44;
+}
+
+.light-mode .highlight-chip {
+  background: rgba(124, 92, 255, 0.12);
+  color: #5d3df0;
+}
+
+.light-mode .activity-modal-loading {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.light-mode .activity-modal-error {
+  background: rgba(255, 80, 80, 0.08);
+  color: #c0392b;
+}
+
+.light-mode .activity-modal-actions {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.light-mode .activity-modal-actions .btn-ghost {
+  color: #4a4a66;
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.light-mode .activity-modal-actions .btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ----------------------------- Responsive ----------------------------- */
+@media (max-width: 600px) {
+  .activity-modal-backdrop {
+    padding: 0;
+  }
+  .activity-modal {
+    width: 100%;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+  }
+  .activity-modal-hero {
+    height: 200px;
+  }
+  .activity-modal-title {
+    font-size: 1.25rem;
+  }
+  .activity-modal-body {
+    padding: 18px 18px 22px;
+  }
+  .activity-modal-actions {
+    flex-direction: column-reverse;
+  }
+  .activity-modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

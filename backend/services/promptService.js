@@ -195,6 +195,47 @@ Dominant sentiment: {{dominantSentiment}}.
 Types reported: {{types}}.
 
 Return ONLY valid JSON: {"summary": "...", "action": "..."}`
+  },
+  {
+    key: 'place.detail',
+    title: 'Place — Detail Card',
+    description:
+      'Used by the Trip Results page when the user clicks an activity card. Produces a rich detail payload (long description, why-visit bullets, insider tips, best time to visit).',
+    variables: [
+      'name',
+      'category',
+      'destination',
+      'shortDescription'
+    ],
+    systemPrompt:
+      'You are a senior travel writer with deep first-hand knowledge of cities worldwide. You output only strict JSON, no markdown fences, no commentary, no trailing prose. Every field MUST be filled with concrete, verifiable, place-specific information — never generic filler like "amazing experience".',
+    userTemplate: `Write a rich detail card for this place a traveler is about to visit.
+
+Place name: {{name}}
+Category: {{category}}
+Destination city/region: {{destination}}
+One-line itinerary description (for context): {{shortDescription}}
+
+Return ONLY this exact JSON shape:
+{
+  "description": "2-3 vivid sentences (max 60 words) that capture what this place is and what it feels like to be there. No marketing fluff.",
+  "whyVisit": [
+    "3 to 5 specific reasons to go. Each one is a single short sentence (max 16 words). Mention concrete details: historical facts, signature dishes, viewpoints, architectural features, famous artworks, etc."
+  ],
+  "tips": [
+    "2 to 4 insider tips, single short sentences each (max 18 words). Examples: best time of day, dress code, ticket trick, photo spot, nearby pairing."
+  ],
+  "bestTimeToVisit": "One short phrase (max 8 words), e.g. 'Early morning, before 9am' or 'Sunset in autumn'.",
+  "highlights": [
+    "2-3 ultra-short tags (max 3 words each), e.g. 'UNESCO site', 'Michelin star', 'Sunset views'."
+  ]
+}
+
+Strict rules:
+- All strings in English, never Markdown.
+- No emojis in the JSON.
+- If you are not sure about a specific fact, omit it rather than invent it.
+- Do NOT include any field that isn't listed above.`
   }
 ];
 

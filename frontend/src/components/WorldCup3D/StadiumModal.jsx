@@ -1,8 +1,10 @@
 import React from 'react';
-import { X, MapPin, Users, Zap, Shield, Globe, Star, Info } from 'lucide-react';
+import { X, MapPin, Users, Zap, Shield, Globe, Star, Info, Camera } from 'lucide-react';
+import { useTranslation } from '../../hooks/useTranslation';
 import './StadiumModal.css';
 
-const StadiumModal = ({ stadium, onClose }) => {
+const StadiumModal = ({ stadium, vrTourUrl = null, onOpenTour, onClose }) => {
+  const { t } = useTranslation();
   if (!stadium) return null;
 
   return (
@@ -69,8 +71,26 @@ const StadiumModal = ({ stadium, onClose }) => {
           </div>
 
           <div className="modal-actions">
-            <button className="modal-btn primary" onClick={onClose}>
-              Close Details
+            {vrTourUrl ? (
+              <button
+                type="button"
+                className="modal-btn primary"
+                onClick={onOpenTour}
+              >
+                <Camera size={16} /> {t('worldCup.view360')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="modal-btn primary is-disabled"
+                disabled
+                title={t('worldCup.view360Soon')}
+              >
+                <Camera size={16} /> {t('worldCup.view360Soon')}
+              </button>
+            )}
+            <button className="modal-btn secondary" onClick={onClose}>
+              {t('worldCup.closeDetails')}
             </button>
           </div>
         </div>

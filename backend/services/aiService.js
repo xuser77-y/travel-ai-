@@ -259,4 +259,63 @@ const refineItinerary = async (currentTrip, userMessage) => {
   }
 };
 
-module.exports = { generateItinerary, refineItinerary };
+// ---------------------------------------------------------------------------
+// generatePlaceDetail — used by /api/places/info when the user clicks an
+// activity card on the Trip Results page. Returns the rich detail payload
+// (description, whyVisit[], tips[], bestTimeToVisit, highlights[]).
+//
+// Returns null on failure so the route can serve a deterministic fallback
+// instead of a 500 — the modal should NEVER block the user from reading
+// the itinerary.
+// ---------------------------------------------------------------------------
+const generatePlaceDetail = async ({ name, category, destination, shortDescription }) => {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return null;
+  if (!name) return null;
+
+  const groq = new Groq({ apiKey });
+
+  try {
+    const context = {
+      name,
+      category: category || 'attraction',
+      destination: destination || '',
+      shortDescription: shortDescription || ''
+    };
+
+    const { system, user } = await promptService.resolveForCall('place.detail', context);
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.6,
+      response_format: { type: 'json_object' }
+    });
+
+    const parsed = cleanJsonResponse(completion.choices[0].message.content);
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    // Defensive normalisation — the modal renders these as arrays / strings
+    // and breaks silently if a field comes back as the wrong type.
+    return {
+      description: typeof parsed.description === 'string' ? parsed.description : '',
+      whyVisit: Array.isArray(parsed.whyVisit) ? parsed.whyVisit.filter(Boolean) : [],
+      tips: Array.isArray(parsed.tips) ? parsed.tips.filter(Boolean) : [],
+      bestTimeToVisit: typeof parsed.bestTimeToVisit === 'string' ? parsed.bestTimeToVisit : '',
+      highlights: Array.isArray(parsed.highlights) ? parsed.highlights.filter(Boolean) : []
+    };
+  } catch (error) {
+    if (error.status === 429) {
+      console.warn('Groq PlaceDetail rate limit hit. Retrying in 3s...');
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      return generatePlaceDetail({ name, category, destination, shortDescription });
+    }
+    console.error('Error generating place detail:', error.message);
+    return null;
+  }
+};
+
+module.exports = { generateItinerary, refineItinerary, generatePlaceDetail };

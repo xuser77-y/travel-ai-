@@ -78,7 +78,7 @@ The frontend is a single-page Vite app. The backend is a single Express process 
 | **crypto.scrypt** (Node built-in) | Password hashing — no bcrypt dependency, with auto-upgrade of legacy plaintext rows |
 | **groq-sdk** | LLM client — `llama-3.3-70b-versatile`, `response_format: json_object` |
 | **node-cache** | In-memory TTL cache for search/photo/POI/weather lookups |
-| **multer** | Multipart upload (live post images → base64 in MongoDB) |
+| **express.json (5 MB limit)** | Receives Live Map post images as base64 data URLs in the JSON body — no separate multipart pipeline needed |
 | **nodemailer** | Transactional emails (OTP verification codes) |
 | **google-auth-library** | Google ID token verification |
 | **axios** | Outbound calls to external APIs |

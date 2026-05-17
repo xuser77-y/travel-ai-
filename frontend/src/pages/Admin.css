@@ -558,6 +558,18 @@ code {
   border-radius: 10px;
 }
 
+/* Wrapper button for the clickable preview image — strip default button look */
+.post-image-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: zoom-in;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
 .post-card p {
   font-size: 0.88rem;
   line-height: 1.45;

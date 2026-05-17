@@ -6,6 +6,7 @@ import BudgetRing from '../components/Budget/BudgetRing';
 import FlightsSection from '../components/Booking/FlightsSection';
 import HotelsSection from '../components/Booking/HotelsSection';
 import WeatherBadge, { WeatherChip } from '../components/UI/WeatherBadge';
+import ActivityDetailModal from '../components/Activity/ActivityDetailModal';
 import { Calendar, MapPin, Users, Info, MessageCircle, Send, X, Sparkles, Clock, DollarSign } from 'lucide-react';
 import axios from 'axios';
 import { useTranslation } from '../hooks/useTranslation';
@@ -20,6 +21,10 @@ const TripResults = () => {
   const { t } = useTranslation();
   const [activeDay, setActiveDay] = useState(0);
   const [activeActivity, setActiveActivity] = useState(-1);
+  // Opens the rich detail modal for one activity. `null` = closed.
+  // We keep the original index so "View on map" still highlights the
+  // matching marker after the modal is dismissed.
+  const [detailActivity, setDetailActivity] = useState(null);
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -336,7 +341,13 @@ const TripResults = () => {
                 <button
                   type="button"
                   className={`activity-card ${isActive ? 'is-active' : ''}`}
-                  onClick={() => setActiveActivity(isActive ? -1 : activityIdx)}
+                  onClick={() => {
+                    // Highlight the matching map marker AND open the
+                    // rich detail modal so the user gets the full
+                    // story: photo, description, why-visit, tips, etc.
+                    setActiveActivity(activityIdx);
+                    setDetailActivity({ index: activityIdx, activity: session.activity });
+                  }}
                 >
                   <div className="activity-info">
                     <div className="activity-top">
@@ -375,6 +386,18 @@ const TripResults = () => {
           <HotelsSection trip={trip} />
         </div>
       </main>
+
+      {/* Rich detail modal — opens when an activity card is clicked. */}
+      <ActivityDetailModal
+        open={!!detailActivity}
+        activity={detailActivity?.activity}
+        destination={trip.destination?.name}
+        currency={trip.budget?.currency}
+        onClose={() => setDetailActivity(null)}
+        onShowOnMap={() => {
+          if (detailActivity) setActiveActivity(detailActivity.index);
+        }}
+      />
 
       {/* Right Column: Map (sticky) */}
       <aside className="results-sidebar right-sidebar">

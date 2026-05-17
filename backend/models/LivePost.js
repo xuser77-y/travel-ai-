@@ -24,6 +24,11 @@ const LivePostSchema = new mongoose.Schema({
     index: true
   },
   upvotes: { type: Number, default: 0 },
+  // Optional photo attached to the post. Stored as a base64 data URL
+  // (`data:image/jpeg;base64,...`) directly in the document. The route
+  // caps the encoded length to ~3 MB so a single field never blows up
+  // the BSON 16 MB document limit. We deliberately don't index it.
+  image: { type: String, default: '' },
   // TTL: posts auto-expire after 24 hours
   expiresAt: { type: Date, default: () => new Date(Date.now() + 24 * 60 * 60 * 1000), index: { expires: 0 } }
 }, { timestamps: true });

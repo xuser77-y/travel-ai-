@@ -54,7 +54,7 @@ The platform ships with five first-class experiences:
 
 ### Storage / Infra
 - MongoDB local (`mongodb://localhost:27017/travio`)
-- Multer in-memory upload → base64 stored on `LivePost.imageData`
+- Image uploads on Live Map: client-side canvas downscale (max 1280 px, JPEG q=0.82) → base64 data URL sent as JSON → stored on `LivePost.image` (3 MB hard cap, validated `data:image/(png|jpe?g|webp);base64,...` regex).
 
 ---
 
@@ -75,6 +75,7 @@ test project/
 │   │   │                         #   /receipt/:id, /stripe/{create-session,finalize}
 │   │   ├── settings.js           # profile, password, delete self
 │   │   ├── notifications.js      # list / mark-read + admin broadcast
+│   │   ├── places.js             # /api/places/info — lazy activity detail card (24h cache)
 │   │   └── admin.js              # all /api/admin/* endpoints
 │   ├── middleware/
 │   │   └── planGate.js           # requireAuth, requireFeature, requireTripQuota
@@ -96,7 +97,7 @@ test project/
 │   ├── models/
 │   │   ├── User.js               # email + scrypt + plan + trialLimit + history
 │   │   ├── Trip.js               # full itinerary doc
-│   │   ├── LivePost.js           # geo + sentiment + base64 image
+│   │   ├── LivePost.js           # geo + sentiment + optional base64 image
 │   │   ├── ChatRoom.js           # hub with messages, participants, inviteCode
 │   │   ├── TripRoom.js           # legacy/light wrapper around ChatRoom
 │   │   ├── Notification.js       # admin broadcasts (global / specific + expiry)
@@ -127,6 +128,7 @@ test project/
         ├── components/
         │   ├── UI/               # Toast, ConfirmDialog providers
         │   ├── Billing/PlanGate.jsx  # usePlan() + <PlanGate feature="..."/>
+        │   ├── Activity/ActivityDetailModal.jsx  # rich place modal opened from Trip Results
         │   └── ...
         └── i18n/                 # EN / FR / AR translations
 ```
@@ -182,12 +184,13 @@ Steps 1–7: Destination → Dates → Travelers/Budget → Style → Interests/
 - AI chat refines the trip in place (`/refine`).
 - Hero photo from Pexels, fallback gradient.
 - Light/dark theme aware.
+- **Clickable activity cards** — clicking any session on the timeline opens a rich detail modal (`ActivityDetailModal`) with: a hero photo of the place (Pexels via `photoService`), an AI-generated description, **why-visit** bullets, **insider tips**, **best time to visit** and short **highlight tags**. The payload is fetched lazily from `POST /api/places/info` and **server-cached for 24 h** so repeated opens are instant. The modal also exposes a **View on map** button that closes the overlay and highlights the matching marker. Even when Groq is offline or rate-limited the route returns a deterministic fallback, so the modal never shows an empty state.
 
 ### 4.6 Live Map
 - **ThemedTileLayer** swaps OSM tiles between dark Carto and light Carto on theme change.
 - **Stable `authorId`**: logged-in users use their JWT id; guests get a UUID persisted in `localStorage` so they keep ownership across sessions.
 - **Pick a custom location** by clicking the map; chip + popup expose a **Remove** button.
-- **Create a post** with text, emotion and an optional image (base64, Multer in-memory).
+- **Create a post** with text, emotion and an optional **image upload** — the browser canvas-downscales the picked file to max 1280 px JPEG (~80–250 KB), the resulting base64 data URL is sent as plain JSON, validated by a regex on the server, and stored directly on `LivePost.image`. No Multer, no S3, no extra infrastructure.
 - **My Recent Posts** panel with a **Delete** button per post; deletions are optimistic and confirmed by a `livemap:delete_post` socket event.
 - **Clusters** overlay: aggregated counts per zone with an AI-generated area summary (Groq → heuristic fallback).
 - **Real-time**: `livemap:new_post` and `livemap:delete_post` broadcast over Socket.io.
@@ -290,6 +293,7 @@ Every LLM call in the app pulls its prompt from the `promptService` registry at 
 | `itinerary.refine`         | `aiService.refineItinerary` (chat)                             | `destination`, `style`, `budget.currency`, `userMessage`                                  |
 | `destination.suggest`      | `POST /api/trips/suggest-destination` (Step 1 "Let AI choose") | `description`                                                                             |
 | `livemap.areaSummary`      | `livePostService.generateAreaSummary`                          | `posts`, `dominantSentiment`, `types`                                                     |
+| `place.detail`             | `POST /api/places/info` (Trip Results activity card)           | `name`, `category`, `destination`, `shortDescription`                                     |
 
 **Templating:** `{{dot.notation}}` placeholders are substituted at call time; objects are stringified as JSON; missing values render as empty strings (never crashes the AI call).
 

@@ -42,12 +42,32 @@ router.get('/posts', async (req, res) => {
 // POST /api/livemap/posts — gated by the `livemap` feature so only Pro+
 // subscribers (and admins) can drop pins. Reading posts is still public.
 const { requireAuth, requireFeature } = require('../middleware/planGate');
+// Accepts only inline base64 data URLs for common web image formats.
+// Length cap (~3 MB encoded) keeps a single document well under MongoDB's
+// 16 MB BSON limit even with the rest of the post fields.
+const IMAGE_DATA_URL = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+const MAX_IMAGE_LENGTH = 3 * 1024 * 1024; // 3 MB of base64 string
+
 router.post('/posts', requireAuth, requireFeature('livemap'), async (req, res) => {
   try {
-    const { type, message, location, author, authorId } = req.body;
+    const { type, message, location, author, authorId, image } = req.body;
     if (!type || !message || !location?.lat || !location?.lon) {
       return res.status(400).json({ error: 'type, message, and location are required' });
     }
+
+    // Validate the optional image: silently drop anything malformed so a
+    // bad upload never blocks the post itself, but reject oversized blobs
+    // up front with a helpful 413 instead of a 500 from Mongo.
+    let safeImage = '';
+    if (image && typeof image === 'string') {
+      if (image.length > MAX_IMAGE_LENGTH) {
+        return res.status(413).json({ error: 'Image is too large (max ~2 MB).' });
+      }
+      if (IMAGE_DATA_URL.test(image)) {
+        safeImage = image;
+      }
+    }
+
     const sentiment = inferSentiment(type);
     const post = await LivePost.create({
       author: author || 'Anonymous Traveler',
@@ -55,7 +75,8 @@ router.post('/posts', requireAuth, requireFeature('livemap'), async (req, res) =
       type,
       message: String(message).slice(0, 280),
       location,
-      sentiment
+      sentiment,
+      image: safeImage
     });
 
     // Broadcast via socket if available

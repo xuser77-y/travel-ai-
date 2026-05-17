@@ -27,7 +27,9 @@ app.use(cors());
 app.use(helmet({
   contentSecurityPolicy: false,
 }));
-app.use(express.json());
+// 5 MB limit covers base64-encoded LiveMap images (~1.5 MB raw + overhead).
+// Default 100 KB used to 413 on any image upload.
+app.use(express.json({ limit: '5mb' }));
 
 // API usage tracker — must come before routes so it sees every /api/* call.
 const apiTracker = require('./services/apiTracker');
@@ -214,6 +216,7 @@ const adminRoutes = require('./routes/admin');
 const paymentRoutes = require('./routes/payments');
 const settingsRoutes = require('./routes/settings');
 const notificationRoutes = require('./routes/notifications');
+const placesRoutes = require('./routes/places');
 
 app.use('/api/trips', tripRoutes);
 app.use('/api/search', searchRoutes);
@@ -225,6 +228,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/places', placesRoutes);
 
 app.get('/', (req, res) => {
   res.send('Travio Backend API is running');

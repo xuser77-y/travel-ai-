@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import Globe from 'react-globe.gl';
-import { ArrowRight, Play, Sparkles, Globe as GlobeIcon, Zap, Users } from 'lucide-react';
+import { ArrowRight, Sparkles, Globe as GlobeIcon, Zap, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './PremiumHero.css';
 
@@ -88,9 +88,6 @@ const PremiumHero = ({ t }) => {
           >
             <button className="ph-btn primary" onClick={() => navigate('/planner')}>
               {t('start')} <ArrowRight size={18} />
-            </button>
-            <button className="ph-btn ghost">
-              <Play size={16} fill="currentColor" /> {t('demo')}
             </button>
           </motion.div>
 
